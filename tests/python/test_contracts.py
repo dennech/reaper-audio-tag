@@ -1,13 +1,7 @@
 from __future__ import annotations
 
-from tests.python.contracts import (
-    ContractError,
-    SCHEMA_VERSION,
-    build_highlights,
-    stable_predictions,
-    validate_request,
-    validate_response,
-)
+from reaper_panns_runtime.contract import ContractError, SCHEMA_VERSION, validate_request, validate_response
+from reaper_panns_runtime.report import build_highlights, rank_predictions
 
 
 def test_validate_request_accepts_expected_payload() -> None:
@@ -43,10 +37,34 @@ def test_validate_response_accepts_ok_result() -> None:
         "schema_version": SCHEMA_VERSION,
         "status": "ok",
         "backend": "cpu",
-        "timing_ms": 123,
-        "predictions": [{"label": "silence", "score": 0.98}],
-        "highlights": ["silence (0.98)"],
+        "attempted_backends": ["cpu"],
+        "timing_ms": {"preprocess": 12, "inference": 111, "total": 123},
+        "summary": "Top detected tag: silence.",
+        "predictions": [
+            {
+                "rank": 1,
+                "label": "silence",
+                "score": 0.98,
+                "bucket": "strong",
+                "peak_score": 0.98,
+                "support_count": 1,
+                "segment_count": 1,
+            }
+        ],
+        "highlights": [
+            {
+                "label": "silence",
+                "score": 0.98,
+                "bucket": "strong",
+                "headline": "Likely tag",
+                "peak_score": 0.98,
+                "support_count": 1,
+                "segment_count": 1,
+            }
+        ],
         "warnings": [],
+        "model_status": {"name": "Cnn14", "source": "managed-runtime"},
+        "item": {"item_name": "Item 1"},
         "error": None,
     }
     normalized = validate_response(payload)
@@ -54,23 +72,14 @@ def test_validate_response_accepts_ok_result() -> None:
 
 
 def test_stable_predictions_sort_by_score_then_label() -> None:
-    rows = stable_predictions(
-        [
-            {"label": "b", "score": 0.8},
-            {"label": "a", "score": 0.9},
-            {"label": "c", "score": 0.8},
-        ]
-    )
-    assert [row["label"] for row in rows] == ["a", "b", "c"]
+    rows = rank_predictions(["b", "a", "c"], [0.8, 0.9, 0.8], limit=3)
+    assert [row.label for row in rows] == ["a", "b", "c"]
 
 
 def test_build_highlights_limits_rows() -> None:
     highlights = build_highlights(
-        [
-            {"label": "alpha", "score": 0.9},
-            {"label": "beta", "score": 0.8},
-            {"label": "gamma", "score": 0.7},
-        ],
+        rank_predictions(["alpha", "beta", "gamma"], [0.9, 0.8, 0.7], limit=3),
         limit=2,
     )
-    assert highlights == ["alpha (0.90)", "beta (0.80)"]
+    assert [row["label"] for row in highlights] == ["alpha", "beta"]
+    assert highlights[0]["headline"] == "Likely tag"

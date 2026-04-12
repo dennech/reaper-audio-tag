@@ -12,7 +12,7 @@ def test_generate_audio_fixtures_is_deterministic() -> None:
         first_manifest = generate_audio_fixtures(Path(first_dir))
         second_manifest = generate_audio_fixtures(Path(second_dir))
 
-        assert first_manifest["schema_version"] == "1"
+        assert first_manifest["schema_version"] == "audio-fixtures/v1"
         assert len(first_manifest["fixtures"]) >= 4
         assert first_manifest["fixtures"][0]["name"] == "silence"
 
@@ -34,4 +34,3 @@ def test_sha256_file_changes_when_content_changes() -> None:
         path.write_bytes(b"abc124")
         updated = sha256_file(path)
         assert original != updated
-

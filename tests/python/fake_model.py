@@ -3,22 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from reaper_panns_runtime.backend import backend_candidates
+from reaper_panns_runtime.contract import error_response as contract_error_response
+from reaper_panns_runtime.contract import response_payload, zero_timing_ms
+from reaper_panns_runtime.report import build_highlights, build_summary, rank_predictions
 from tests.python.audio_fixtures import describe_audio
-from tests.python.contracts import build_highlights, error_payload, stable_predictions
-
-
-def _backend_from_request(requested_backend: str, allow_mps: bool) -> tuple[str, list[str]]:
-    warnings: list[str] = []
-    if requested_backend == "mps":
-        if allow_mps:
-            return "mps", warnings
-        warnings.append("mps_requested_but_unavailable")
-        return "cpu", warnings
-    if requested_backend == "auto":
-        if allow_mps:
-            return "mps", warnings
-        return "cpu", warnings
-    return "cpu", warnings
 
 
 def _score(label: str, base: float, modifier: float = 0.0) -> dict[str, Any]:
@@ -76,38 +65,48 @@ def _predictions_from_stats(stats: dict[str, Any]) -> list[dict[str, Any]]:
         )
 
     rows.append(_score("longer clip" if duration > 1.0 else "short clip", 0.42))
-    return stable_predictions(rows, limit=5)
+    labels = [row["label"] for row in rows]
+    scores = [row["score"] for row in rows]
+    return [prediction.to_dict() for prediction in rank_predictions(labels, scores, limit=5)]
 
 
 def analyze_audio_request(request: dict[str, Any], *, allow_mps: bool = False) -> dict[str, Any]:
     temp_audio_path = Path(request["temp_audio_path"])
-    backend, warnings = _backend_from_request(str(request.get("requested_backend", "auto")), allow_mps=allow_mps)
+    requested_backend = str(request.get("requested_backend", "auto"))
+    attempted_backends = backend_candidates(requested_backend)
+    warnings: list[str] = []
+    if "mps" in attempted_backends and not allow_mps:
+        warnings.append("mps probe failed: fake test backend is unavailable.")
+        backend = "cpu"
+    else:
+        backend = "mps" if "mps" in attempted_backends and allow_mps else "cpu"
     stats = describe_audio(temp_audio_path)
     predictions = _predictions_from_stats(stats)
-    timing_ms = int(round(120.0 + stats["duration_sec"] * 210.0 + (45.0 if backend == "mps" else 110.0)))
+    ranked_predictions = rank_predictions(
+        [row["label"] for row in predictions],
+        [row["score"] for row in predictions],
+        limit=5,
+    )
+    timing_total = int(round(120.0 + stats["duration_sec"] * 210.0 + (45.0 if backend == "mps" else 110.0)))
+    timing_ms = zero_timing_ms()
+    timing_ms["total"] = timing_total
+    timing_ms["inference"] = timing_total
 
-    response = {
-        "schema_version": request["schema_version"],
-        "status": "ok",
-        "backend": backend,
-        "timing_ms": timing_ms,
-        "predictions": predictions,
-        "highlights": build_highlights(predictions, limit=4),
-        "warnings": warnings,
-        "error": None,
-        "stats": stats,
-    }
-    return response
+    return response_payload(
+        schema_version=request["schema_version"],
+        status="ok",
+        backend=backend,
+        attempted_backends=attempted_backends,
+        timing_ms=timing_ms,
+        summary=build_summary(ranked_predictions),
+        predictions=[prediction.to_dict() for prediction in ranked_predictions],
+        highlights=build_highlights(ranked_predictions, limit=4),
+        warnings=warnings,
+        model_status={"name": "Fake Cnn14", "source": "test-fixture"},
+        item=dict(request.get("item_metadata", {})),
+        error=None,
+    )
 
 
 def error_response(code: str, message: str, backend: str = "cpu") -> dict[str, Any]:
-    return {
-        "schema_version": "1",
-        "status": "error",
-        "backend": backend,
-        "timing_ms": 0,
-        "predictions": [],
-        "highlights": [],
-        "warnings": [],
-        "error": error_payload(code, message),
-    }
+    return contract_error_response(message, code=code, backend=backend)

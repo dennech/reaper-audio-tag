@@ -9,12 +9,14 @@
 5. Запусти `scripts/bootstrap.command`.
 6. Дождись, пока скрипт:
    - создаст локальное runtime-окружение
-   - поставит Python-зависимости
+   - установит packaged Python runtime в управляемый REAPER venv
    - скачает checkpoint `Cnn14_mAP=0.431.pth`
    - проверит checkpoint сильной checksum-проверкой перед активацией runtime
    - запишет runtime config в пользовательскую REAPER data-папку
 7. В REAPER импортируй `reaper/PANNs Item Report.lua` в Actions list.
 8. Выбери один аудио-item и запусти скрипт.
+
+Если ты скачал публичный source release с GitHub, его можно просто распаковать в любую папку и запустить `scripts/bootstrap.command`. Клонирование нужно только для разработки.
 
 ## Где runtime хранит данные
 
@@ -26,5 +28,7 @@
 
 - Сам репозиторий остаётся лёгким: большой файл модели хранится вне Git.
 - Скрипт запускает только управляемый runtime внутри `Data/reaper-panns-item-report/runtime/venv`.
+- Перед tagging аудио сводится в mono и ресемплится в `32 kHz`.
+- Отчёт — это clip-level tagging, а не event detection.
 - Если `ReaImGui` не установлен, скрипт покажет инструкцию вместо падения.
 - Windows намеренно вынесен за рамки v1.

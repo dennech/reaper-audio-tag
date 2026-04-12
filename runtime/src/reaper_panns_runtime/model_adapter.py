@@ -3,11 +3,11 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
 import numpy as np
 import soundfile as sf
 
+from .backend import backend_candidates
 from .labels import load_labels
 from .report import build_highlights, build_summary, rank_predictions
 
@@ -23,6 +23,16 @@ class InferenceBundle:
     highlights: list[dict[str, object]]
     timing_ms: dict[str, int]
     warnings: list[str]
+
+
+@dataclass
+class InferenceError(RuntimeError):
+    message: str
+    attempted_backends: list[str]
+    warnings: list[str]
+
+    def __str__(self) -> str:
+        return self.message
 
 
 def _load_audio(path: Path) -> np.ndarray:
@@ -99,9 +109,7 @@ class PannsModelRunner:
         inference_ms = int((time.perf_counter() - infer_started) * 1000)
 
         clipwise = output["clipwise_output"].detach().cpu().numpy()
-        clipwise_max = np.max(clipwise, axis=0)
-
-        ranked = rank_predictions(self.labels, clipwise_max)
+        ranked = rank_predictions(self.labels, clipwise)
         return InferenceBundle(
             summary=build_summary(ranked),
             predictions=[prediction.to_dict() for prediction in ranked],
@@ -117,11 +125,7 @@ class PannsModelRunner:
 
 def analyze_audio_file(audio_path: Path, checkpoint_path: Path, *, primary_backend: str) -> dict[str, object]:
     warnings: list[str] = []
-    attempted_backends: Iterable[str]
-    if primary_backend == "mps":
-        attempted_backends = ("mps", "cpu")
-    else:
-        attempted_backends = ("cpu",)
+    attempted_backends = backend_candidates(primary_backend)
 
     last_error: Exception | None = None
     for backend in attempted_backends:
@@ -133,10 +137,15 @@ def analyze_audio_file(audio_path: Path, checkpoint_path: Path, *, primary_backe
                 "predictions": bundle.predictions,
                 "highlights": bundle.highlights,
                 "timing_ms": bundle.timing_ms,
+                "attempted_backends": attempted_backends,
                 "warnings": warnings + bundle.warnings,
             }
         except Exception as exc:
             last_error = exc
             warnings.append(f"{backend} inference failed: {exc}")
 
-    raise RuntimeError(str(last_error) if last_error else "Inference failed without an error.")
+    raise InferenceError(
+        str(last_error) if last_error else "Inference failed without an error.",
+        attempted_backends=attempted_backends,
+        warnings=warnings,
+    )

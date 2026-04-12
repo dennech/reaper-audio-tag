@@ -6,6 +6,7 @@ import sys
 import tempfile
 from pathlib import Path
 
+from reaper_panns_runtime.contract import SCHEMA_VERSION, validate_response
 from tests.python.audio_fixtures import generate_audio_fixtures
 
 
@@ -23,7 +24,7 @@ def test_bootstrap_command_returns_json() -> None:
     assert completed.returncode == 0
     payload = json.loads(completed.stdout)
     assert payload["status"] == "ok"
-    assert payload["schema_version"] == "1"
+    assert payload["schema_version"] == SCHEMA_VERSION
 
 
 def test_probe_command_accepts_request_shape() -> None:
@@ -43,7 +44,7 @@ def test_analyze_command_generates_stable_response() -> None:
         request_path.write_text(
             json.dumps(
                 {
-                    "schema_version": "1",
+                    "schema_version": SCHEMA_VERSION,
                     "temp_audio_path": item["path"],
                     "item_metadata": {"item_id": "item-1", "name": "tone"},
                     "requested_backend": "auto",
@@ -60,4 +61,6 @@ def test_analyze_command_generates_stable_response() -> None:
         payload = json.loads(completed.stdout)
         assert payload["status"] == "ok"
         assert payload["predictions"][0]["label"] == "sine tone"
-        assert payload["highlights"][0].startswith("sine tone")
+        assert payload["highlights"][0]["label"] == "sine tone"
+        assert payload["attempted_backends"] == ["mps", "cpu"]
+        validate_response(payload)

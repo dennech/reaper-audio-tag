@@ -93,4 +93,71 @@ function tests.test_start_job_uses_managed_python_and_ignores_config_executable(
   os.execute('rm -rf ' .. path_utils.sh_quote(temp_root))
 end
 
+function tests.test_poll_job_returns_normalized_timeout_payload()
+  local original_reaper = _G.reaper
+  _G.reaper = {
+    time_precise = function()
+      return 10.5
+    end,
+  }
+
+  local polled = runtime_client.poll_job({
+    result_file = '/tmp/does-not-exist.json',
+    started_at = 0,
+    timeout_sec = 2,
+    request_payload = {
+      requested_backend = 'auto',
+      item_metadata = {
+        item_name = 'Timed out item',
+      },
+    },
+  })
+
+  _G.reaper = original_reaper
+
+  luaunit.assertEquals(polled.done, true)
+  luaunit.assertEquals(polled.payload.status, 'error')
+  luaunit.assertEquals(polled.payload.error.code, 'timeout')
+  luaunit.assertEquals(polled.payload.attempted_backends[1], 'mps')
+  luaunit.assertEquals(polled.payload.attempted_backends[2], 'cpu')
+  luaunit.assertEquals(polled.payload.item.item_name, 'Timed out item')
+end
+
+function tests.test_poll_job_returns_normalized_malformed_json_payload()
+  local original_reaper = _G.reaper
+  local temp_root = mktemp_dir()
+  local result_file = path_utils.join(temp_root, 'result.json')
+  local handle = assert(io.open(result_file, 'wb'))
+  handle:write('{not-json')
+  handle:close()
+
+  _G.reaper = {
+    time_precise = function()
+      return 1.0
+    end,
+  }
+
+  local polled = runtime_client.poll_job({
+    result_file = result_file,
+    started_at = 0,
+    timeout_sec = 10,
+    request_payload = {
+      requested_backend = 'cpu',
+      item_metadata = {
+        item_name = 'Broken result',
+      },
+    },
+  })
+
+  _G.reaper = original_reaper
+
+  luaunit.assertEquals(polled.done, true)
+  luaunit.assertEquals(polled.payload.status, 'error')
+  luaunit.assertEquals(polled.payload.error.code, 'malformed_json')
+  luaunit.assertEquals(polled.payload.attempted_backends[1], 'cpu')
+  luaunit.assertEquals(polled.payload.item.item_name, 'Broken result')
+
+  os.execute('rm -rf ' .. path_utils.sh_quote(temp_root))
+end
+
 return tests

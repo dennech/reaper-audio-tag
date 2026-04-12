@@ -1,11 +1,17 @@
 PANNs Item Report — Full Report
 Status: ok
 Backend: mps
+Attempted backends: mps -> cpu
 Elapsed: 842 ms
+Note: Clip-level tagging only; not event detection.
 Predictions:
   - 🎯 sine tone => 0.94
+    Support: 3/3 segments | Peak: 0.97
   - ✨ steady signal => 0.89
+    Support: 3/3 segments | Peak: 0.91
   - ✨ tonal sound => 0.82
+    Support: 3/3 segments | Peak: 0.85
   - 🔎 longer clip => 0.42
+    Support: 2/3 segments | Peak: 0.42
 Model: Cnn14
 Source: managed runtime

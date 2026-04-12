@@ -5,14 +5,12 @@ import io
 import json
 import os
 import stat
-import sys
 import tempfile
-import types
 from pathlib import Path
 from unittest.mock import patch
 
 from reaper_panns_runtime.cli import main
-from reaper_panns_runtime.contract import SCHEMA_VERSION, read_json
+from reaper_panns_runtime.contract import SCHEMA_VERSION, read_json, validate_response
 from reaper_panns_runtime.paths import RuntimePaths, ensure_directories
 from tests.python.audio_fixtures import generate_audio_fixtures
 
@@ -98,8 +96,10 @@ def test_analyze_cli_works_with_fake_model() -> None:
         assert payload["backend"] == "fake"
         assert payload["predictions"]
         assert payload["summary"]
+        assert payload["attempted_backends"] == ["fake"]
         assert payload["model_status"]["source"] == "managed-runtime"
         assert "path" not in payload["model_status"]
+        validate_response(payload)
 
 
 def test_analyze_cli_ignores_request_model_path_override() -> None:
@@ -155,15 +155,13 @@ def test_analyze_cli_ignores_request_model_path_override() -> None:
                 "predictions": [],
                 "highlights": [],
                 "timing_ms": {"preprocess": 0, "inference": 0, "total": 0},
+                "attempted_backends": ["cpu"],
                 "warnings": [],
             }
 
-        fake_module = types.ModuleType("reaper_panns_runtime.model_adapter")
-        fake_module.analyze_audio_file = fake_analyze
-
         stdout = io.StringIO()
         with patch.dict(os.environ, {"REAPER_RESOURCE_PATH": str(resource_dir)}, clear=False):
-            with patch.dict(sys.modules, {"reaper_panns_runtime.model_adapter": fake_module}):
+            with patch("reaper_panns_runtime.cli.analyze_audio_file", side_effect=fake_analyze):
                 with contextlib.redirect_stdout(stdout):
                     exit_code = main(["analyze", "--request-file", str(request_path)])
 
@@ -172,6 +170,65 @@ def test_analyze_cli_ignores_request_model_path_override() -> None:
         assert observed["model_path"] == str(model_path)
         assert observed["primary_backend"] == "cpu"
         assert payload["status"] == "ok"
+        validate_response(payload)
+
+
+def test_analyze_cli_returns_normalized_error_payload() -> None:
+    with tempfile.TemporaryDirectory() as temp_dir:
+        resource_dir = Path(temp_dir) / "REAPER"
+        data_dir = resource_dir / "Data" / "reaper-panns-item-report"
+        data_dir.mkdir(parents=True, exist_ok=True)
+        model_path = data_dir / "models" / "Cnn14_mAP=0.431.pth"
+        model_path.parent.mkdir(parents=True, exist_ok=True)
+        model_path.write_bytes(b"placeholder")
+        config_path = data_dir / "config.json"
+        config_path.write_text(
+            json.dumps(
+                {
+                    "schema_version": SCHEMA_VERSION,
+                    "model": {"name": "Cnn14", "path": str(model_path)},
+                    "runtime": {"preferred_backend": "cpu", "cpu_threads": 2},
+                },
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        fixtures = generate_audio_fixtures(Path(temp_dir) / "fixtures")
+        audio_path = Path(fixtures["fixtures"][1]["path"])
+        request_path = Path(temp_dir) / "request.json"
+        request_path.write_text(
+            json.dumps(
+                {
+                    "schema_version": SCHEMA_VERSION,
+                    "temp_audio_path": str(audio_path),
+                    "item_metadata": {"item_name": "tone_440hz"},
+                    "requested_backend": "auto",
+                    "timeout_sec": 15,
+                },
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        stdout = io.StringIO()
+        with patch.dict(os.environ, {"REAPER_RESOURCE_PATH": str(resource_dir)}, clear=False):
+            with patch(
+                "reaper_panns_runtime.cli.analyze_audio_file",
+                side_effect=RuntimeError("unexpected crash"),
+            ):
+                with contextlib.redirect_stdout(stdout):
+                    exit_code = main(["analyze", "--request-file", str(request_path)])
+
+        payload = json.loads(stdout.getvalue())
+        assert exit_code == 1
+        assert payload["status"] == "error"
+        assert payload["error"]["code"] == "analysis_failed"
+        assert payload["attempted_backends"] == ["mps", "cpu"]
+        assert payload["summary"] == "No analysis summary is available."
+        validate_response(payload)
 
 
 def test_ensure_directories_normalizes_private_permissions_on_posix() -> None:

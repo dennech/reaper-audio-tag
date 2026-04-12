@@ -1,6 +1,6 @@
 PANNs Item Report
 ✅ ok | mps | 842 ms
-A steady tonal signal with a narrow spectrum.
+Top detected tags: sine tone, steady signal, and tonal sound.
 Highlights:
   🎯 sine tone (0.94)
   ✨ steady signal (0.89)

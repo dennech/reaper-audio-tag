@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 from dataclasses import asdict, dataclass
-from typing import Iterable
 
 try:
     import torch
@@ -15,6 +14,7 @@ class ProbeResult:
     status: str
     backend: str
     device: str
+    attempted_backends: list[str]
     warnings: list[str]
     torch_version: str
     cpu_threads: int
@@ -42,7 +42,7 @@ def configure_cpu_threads() -> int:
     return threads
 
 
-def _mps_candidates(requested_backend: str) -> Iterable[str]:
+def backend_candidates(requested_backend: str) -> list[str]:
     if requested_backend == "cpu":
         return ["cpu"]
     if requested_backend == "mps":
@@ -53,12 +53,13 @@ def _mps_candidates(requested_backend: str) -> Iterable[str]:
 def probe_backend(requested_backend: str = "auto") -> ProbeResult:
     warnings: list[str] = []
     threads = configure_cpu_threads()
+    attempted_backends = backend_candidates(requested_backend)
 
     if torch is None:
         warnings.append("torch is not installed; acceleration probing was skipped.")
-        return ProbeResult("warning", "cpu", "cpu", warnings, "unavailable", threads)
+        return ProbeResult("warning", "cpu", "cpu", attempted_backends, warnings, "unavailable", threads)
 
-    for backend in _mps_candidates(requested_backend):
+    for backend in attempted_backends:
         try:
             if backend == "mps":
                 if not hasattr(torch.backends, "mps") or not torch.backends.mps.is_built():
@@ -67,12 +68,12 @@ def probe_backend(requested_backend: str = "auto") -> ProbeResult:
                     raise RuntimeError("MPS is unavailable on this machine.")
                 sample = torch.ones((8,), device="mps")
                 _ = (sample * 2).cpu().numpy()
-                return ProbeResult("ok", "mps", "mps", warnings, torch.__version__, threads)
+                return ProbeResult("ok", "mps", "mps", attempted_backends, warnings, torch.__version__, threads)
 
             sample = torch.ones((8,), device="cpu")
             _ = (sample * 2).numpy()
-            return ProbeResult("ok", "cpu", "cpu", warnings, torch.__version__, threads)
+            return ProbeResult("ok", "cpu", "cpu", attempted_backends, warnings, torch.__version__, threads)
         except Exception as exc:  # pragma: no cover - defensive fallback
             warnings.append(f"{backend} probe failed: {exc}")
 
-    return ProbeResult("error", "cpu", "cpu", warnings, torch.__version__, threads)
+    return ProbeResult("error", "cpu", "cpu", attempted_backends, warnings, torch.__version__, threads)

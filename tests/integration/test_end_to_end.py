@@ -8,7 +8,7 @@ import tempfile
 from pathlib import Path
 
 from tests.python.audio_fixtures import generate_audio_fixtures
-from reaper_panns_runtime.contract import SCHEMA_VERSION
+from reaper_panns_runtime.contract import SCHEMA_VERSION, validate_response
 
 
 def test_runtime_cli_fake_mode_and_lua_runner_work_together() -> None:
@@ -65,6 +65,8 @@ def test_runtime_cli_fake_mode_and_lua_runner_work_together() -> None:
         response = json.loads(cli.stdout)
         assert response["backend"] == "fake"
         assert response["status"] == "ok"
+        assert response["attempted_backends"] == ["fake"]
+        validate_response(response)
 
         lua = subprocess.run(
             ["lua", "tests/lua/run_tests.lua"],

@@ -2,12 +2,10 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 from pathlib import Path
 
-from tests.python.audio_fixtures import generate_audio_fixtures
-from tests.python.contracts import ContractError, SCHEMA_VERSION, validate_request, validate_response
+from reaper_panns_runtime.contract import ContractError, SCHEMA_VERSION, validate_request, validate_response
 from tests.python.fake_model import analyze_audio_request, error_response
 
 

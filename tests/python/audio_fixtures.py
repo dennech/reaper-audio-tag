@@ -155,7 +155,7 @@ def generate_audio_fixtures(output_dir: Path) -> dict[str, Any]:
         )
 
     manifest = {
-        "schema_version": "1",
+        "schema_version": "audio-fixtures/v1",
         "generator": "tests.python.audio_fixtures",
         "sample_rate": DEFAULT_SAMPLE_RATE,
         "channels": DEFAULT_CHANNELS,
@@ -209,4 +209,3 @@ def describe_audio(path: Path) -> dict[str, Any]:
         "zero_crossings": zero_crossings,
         "mean_abs": mean_abs,
     }
-

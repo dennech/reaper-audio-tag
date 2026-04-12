@@ -1,6 +1,8 @@
 # REAPER PANNs Item Report
 
-`REAPER PANNs Item Report` is a small REAPER script that analyzes the currently selected audio item with `PANNs Cnn14` and shows a compact, friendly report window with highlights, top tags, backend status, and a details mode.
+`REAPER PANNs Item Report` is a REAPER action for quick clip-level audio inspection. It exports the currently selected audio item, downmixes it to mono, resamples it to `32 kHz`, runs local `PANNs Cnn14` tagging through a managed Python runtime, and shows a compact in-DAW report with highlights, top detected tags, backend status, and a details mode.
+
+v1 intentionally stays narrow: macOS first, one selected audio item at a time, and `clipwise audio tagging` only. It is a practical analysis helper for fast spot checks, not a timeline event detector.
 
 ## Status
 
@@ -12,9 +14,10 @@
 ## What It Does
 
 1. Exports the exact selected take region from REAPER via `CreateTakeAudioAccessor` and `GetAudioAccessorSamples`.
-2. Sends a JSON request to the local Python runtime.
-3. Runs PANNs inference with `MPS -> CPU` fallback on Apple Silicon, or `CPU` on Intel Mac.
-4. Displays:
+2. Downmixes the audio to mono and resamples it to `32 kHz` before tagging.
+3. Sends a JSON request to the local Python runtime.
+4. Runs PANNs inference with `MPS -> CPU` fallback on Apple Silicon, or `CPU` on Intel Mac.
+5. Displays:
    - a compact summary with interesting findings
    - backend and timing status
    - a detailed view with top predictions
@@ -34,6 +37,8 @@
 3. In REAPER, load [`reaper/PANNs Item Report.lua`](reaper/PANNs%20Item%20Report.lua) into the Actions list.
 4. Select exactly one audio item.
 5. Run `PANNs Item Report`.
+
+If you are installing from the public release, downloading the source archive and running `scripts/bootstrap.command` is enough. Cloning is only needed for development.
 
 Detailed setup instructions:
 
@@ -69,3 +74,4 @@ Troubleshooting:
 - The project vendors the official PANNs model code needed for `Cnn14` loading.
 - The large model checkpoint is downloaded into the user REAPER data directory and is not committed to Git.
 - The first release is intentionally conservative: reliability and fallback behavior are prioritized over maximum acceleration.
+- The report is clip-level tagging guidance, not event detection or timeline localization.

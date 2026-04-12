@@ -7,11 +7,21 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from .backend import probe_backend
+from .backend import backend_candidates, probe_backend
 from .bootstrap import bootstrap_runtime
 from .config_store import load_config
-from .contract import ContractError, error_response, read_json, validate_request, write_json
+from .contract import (
+    ContractError,
+    error_response,
+    read_json,
+    response_payload,
+    validate_request,
+    validate_response,
+    write_json,
+    zero_timing_ms,
+)
 from .fake_model import analyze_with_fake_model
+from .model_adapter import InferenceError, analyze_audio_file
 from .paths import default_paths
 
 
@@ -25,8 +35,22 @@ def _configured_model_path(config: dict[str, Any]) -> Path:
 
 
 def _analyze(args: argparse.Namespace) -> int:
-    request = validate_request(read_json(args.request_file))
+    try:
+        request = validate_request(read_json(args.request_file))
+    except ContractError as exc:
+        payload = error_response(
+            exc.message,
+            code=exc.code,
+        )
+        if args.result_file:
+            write_json(args.result_file, payload)
+        else:
+            _dump(payload)
+        return 1
+
     paths = default_paths()
+    requested_backend = request.get("requested_backend") or "auto"
+    default_model_status = {"name": "Cnn14", "source": "managed-runtime"}
 
     try:
         config = load_config(paths)
@@ -34,6 +58,10 @@ def _analyze(args: argparse.Namespace) -> int:
         payload = error_response(
             "Runtime is not configured yet. Run scripts/bootstrap.command first.",
             code="runtime_not_bootstrapped",
+            backend="cpu",
+            attempted_backends=backend_candidates(requested_backend),
+            model_status=default_model_status,
+            item=request["item_metadata"],
         )
         if args.result_file:
             write_json(args.result_file, payload)
@@ -44,39 +72,61 @@ def _analyze(args: argparse.Namespace) -> int:
     audio_path = Path(request["temp_audio_path"])
     model_path = _configured_model_path(config)
     requested_backend = request.get("requested_backend") or config["runtime"]["preferred_backend"]
+    model_status = {
+        "name": config["model"]["name"],
+        "source": "managed-runtime",
+    }
 
     try:
         if args.fake_model or os.environ.get("REAPER_PANNS_FAKE_MODEL") == "1":
             result = analyze_with_fake_model(audio_path)
             backend = "fake"
             warnings = []
-            timing = {"preprocess": 0, "inference": 0, "total": 0}
+            timing = zero_timing_ms()
+            attempted_backends = ["fake"]
         else:
-            from .model_adapter import analyze_audio_file
-
             runtime_result = analyze_audio_file(audio_path, model_path, primary_backend=requested_backend)
             result = runtime_result
             backend = runtime_result["backend"]
             warnings = runtime_result["warnings"]
             timing = runtime_result["timing_ms"]
+            attempted_backends = runtime_result["attempted_backends"]
 
-        payload = {
-            "schema_version": request["schema_version"],
-            "status": "ok",
-            "backend": backend,
-            "timing_ms": timing,
-            "summary": result["summary"],
-            "predictions": result["predictions"],
-            "highlights": result["highlights"],
-            "warnings": warnings,
-            "model_status": {
-                "name": config["model"]["name"],
-                "source": "managed-runtime",
-            },
-            "item": request["item_metadata"],
-        }
+        payload = response_payload(
+            schema_version=request["schema_version"],
+            status="ok",
+            backend=backend,
+            attempted_backends=attempted_backends,
+            timing_ms=timing,
+            summary=result["summary"],
+            predictions=result["predictions"],
+            highlights=result["highlights"],
+            warnings=warnings,
+            model_status=model_status,
+            item=request["item_metadata"],
+            error=None,
+        )
+    except InferenceError as exc:
+        payload = error_response(
+            str(exc),
+            code="backend_attempts_failed",
+            backend=exc.attempted_backends[-1] if exc.attempted_backends else "cpu",
+            attempted_backends=exc.attempted_backends,
+            warnings=exc.warnings,
+            model_status=model_status,
+            item=request["item_metadata"],
+        )
     except Exception as exc:
-        payload = error_response(str(exc), code="analysis_failed")
+        payload = error_response(
+            str(exc),
+            code="analysis_failed",
+            backend="cpu",
+            attempted_backends=backend_candidates(requested_backend),
+            model_status=model_status,
+            item=request["item_metadata"],
+        )
+
+    validate_response(payload)
 
     if args.result_file:
         write_json(args.result_file, payload)
@@ -134,7 +184,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return int(args.func(args))
     except ContractError as exc:
-        payload = error_response(str(exc), code="contract_error")
+        payload = error_response(exc.message, code=exc.code)
         _dump(payload)
         return 1
 

@@ -11,6 +11,7 @@
 - Run `scripts/bootstrap.command`.
 - Confirm that `config.json` exists in the REAPER user data directory.
 - Do not point the script at a system Python manually; it expects the managed runtime under `Data/reaper-panns-item-report/runtime/venv`.
+- For development-only editable installs, run `scripts/bootstrap_runtime.sh --dev`.
 
 ## The runtime falls back to CPU
 
@@ -27,3 +28,9 @@
 
 - Make sure exactly one item is selected.
 - Make sure the active take is audio, not MIDI.
+
+## The tags feel too generic
+
+- The current runtime does clip-level tagging only.
+- Audio is downmixed to mono and resampled to `32 kHz` before inference.
+- The report is best used as a fast cueing tool, not as a precise event detector.

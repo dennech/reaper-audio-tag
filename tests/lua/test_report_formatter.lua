@@ -8,26 +8,29 @@ local sample_report = {
   schema_version = 'reaper-panns-item-report/v1',
   status = 'ok',
   backend = 'mps',
-  summary = 'A steady tonal signal with a narrow spectrum.',
+  attempted_backends = { 'mps', 'cpu' },
+  summary = 'Top detected tags: sine tone, steady signal, and tonal sound.',
   timing_ms = {
+    preprocess = 118,
+    inference = 724,
     total = 842,
   },
   predictions = {
-    { label = 'sine tone', score = 0.94, bucket = 'strong' },
-    { label = 'steady signal', score = 0.89, bucket = 'solid' },
-    { label = 'tonal sound', score = 0.82, bucket = 'solid' },
-    { label = 'longer clip', score = 0.42, bucket = 'possible' },
+    { rank = 1, label = 'sine tone', score = 0.94, bucket = 'strong', peak_score = 0.97, support_count = 3, segment_count = 3 },
+    { rank = 2, label = 'steady signal', score = 0.89, bucket = 'solid', peak_score = 0.91, support_count = 3, segment_count = 3 },
+    { rank = 3, label = 'tonal sound', score = 0.82, bucket = 'solid', peak_score = 0.85, support_count = 3, segment_count = 3 },
+    { rank = 4, label = 'longer clip', score = 0.42, bucket = 'possible', peak_score = 0.42, support_count = 2, segment_count = 3 },
   },
   highlights = {
-    { label = 'sine tone', score = 0.94, bucket = 'strong', headline = 'Strong signal' },
-    { label = 'steady signal', score = 0.89, bucket = 'solid', headline = 'Clear signal' },
-    { label = 'tonal sound', score = 0.82, bucket = 'solid', headline = 'Clear signal' },
+    { label = 'sine tone', score = 0.94, bucket = 'strong', headline = 'Likely tag', peak_score = 0.97, support_count = 3, segment_count = 3 },
+    { label = 'steady signal', score = 0.89, bucket = 'solid', headline = 'Consistent tag', peak_score = 0.91, support_count = 3, segment_count = 3 },
+    { label = 'tonal sound', score = 0.82, bucket = 'solid', headline = 'Consistent tag', peak_score = 0.85, support_count = 3, segment_count = 3 },
   },
   warnings = {},
   error = nil,
   model_status = {
     name = 'Cnn14',
-    path = '/tmp/Cnn14_mAP=0.431.pth',
+    source = 'managed runtime',
   },
 }
 
@@ -35,12 +38,20 @@ local error_report = {
   schema_version = 'reaper-panns-item-report/v1',
   status = 'error',
   backend = 'cpu',
+  attempted_backends = { 'mps', 'cpu' },
   timing_ms = {
+    preprocess = 0,
+    inference = 0,
     total = 0,
   },
   predictions = {},
   highlights = {},
   warnings = { 'mps_requested_but_unavailable' },
+  summary = 'No analysis summary is available.',
+  model_status = {
+    name = 'Cnn14',
+    source = 'managed runtime',
+  },
   error = {
     code = 'missing_model',
     message = 'Model checkpoint was not found',
@@ -60,13 +71,20 @@ function tests.test_loading_snapshot()
 end
 
 function tests.test_error_snapshot()
-  snapshot.assert_snapshot(formatter.error_report(error_report.error), 'error.txt')
+  snapshot.assert_snapshot(formatter.error_report(error_report), 'error.txt')
 end
 
 function tests.test_compact_report_contains_summary()
   local report = formatter.compact_report(sample_report)
-  luaunit.assertStrContains(report, 'A steady tonal signal with a narrow spectrum.')
+  luaunit.assertStrContains(report, 'Top detected tags: sine tone, steady signal, and tonal sound.')
   luaunit.assertStrContains(report, 'Press Details for the full report')
+end
+
+function tests.test_bucket_icons_are_distinct()
+  luaunit.assertEquals(formatter.bucket_icon('strong'), '🎯')
+  luaunit.assertEquals(formatter.bucket_icon('solid'), '✨')
+  luaunit.assertEquals(formatter.bucket_icon('possible'), '🔎')
+  luaunit.assertEquals(formatter.bucket_icon('weak'), '•')
 end
 
 return tests

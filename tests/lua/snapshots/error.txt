@@ -2,3 +2,5 @@ PANNs Item Report
 💥 Analysis failed
 Code: missing_model
 Model checkpoint was not found
+Attempted backends: mps -> cpu
+⚠️ mps_requested_but_unavailable

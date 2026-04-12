@@ -1,6 +1,8 @@
 # REAPER PANNs Item Report
 
-`REAPER PANNs Item Report` — это небольшой скрипт для REAPER, который анализирует текущий выбранный аудио-item через `PANNs Cnn14` и показывает компактное симпатичное окно с выводами, статусом backend и подробным режимом.
+`REAPER PANNs Item Report` — это action для REAPER для быстрого clip-level анализа аудио. Он экспортирует текущий выбранный аудио-айтем, сводит его в mono, ресемплит в `32 kHz`, запускает локальный `PANNs Cnn14` через управляемый Python runtime и показывает компактный отчёт прямо в DAW: ключевые находки, top detected tags, backend status и подробный режим.
+
+v1 намеренно ограничен: сначала macOS, только один выбранный аудио-айтем за запуск и только `clipwise audio tagging`. Это практичный инструмент для быстрых spot-check проверок, а не timeline/event detector.
 
 ## Статус
 
@@ -12,9 +14,10 @@
 ## Что делает проект
 
 1. Экспортирует именно выбранный участок take из REAPER через `CreateTakeAudioAccessor` и `GetAudioAccessorSamples`.
-2. Передаёт JSON-запрос локальному Python runtime.
-3. Запускает инференс PANNs с fallback `MPS -> CPU` на Apple Silicon и `CPU` на Intel Mac.
-4. Показывает:
+2. Сводит аудио в mono и ресемплит его в `32 kHz` перед tagging.
+3. Передаёт JSON-запрос локальному Python runtime.
+4. Запускает инференс PANNs с fallback `MPS -> CPU` на Apple Silicon и `CPU` на Intel Mac.
+5. Показывает:
    - компактное summary с интересными находками
    - backend и timing status
    - подробный список top predictions
@@ -34,6 +37,8 @@
 3. В REAPER добавь [`reaper/PANNs Item Report.lua`](reaper/PANNs%20Item%20Report.lua) в Actions list.
 4. Выбери ровно один аудио-item.
 5. Запусти `PANNs Item Report`.
+
+Если ты ставишь публичный релиз, достаточно скачать source archive и запустить `scripts/bootstrap.command`. Клонирование нужно только для разработки.
 
 Подробная установка:
 
@@ -69,3 +74,4 @@
 - В проект vendored нужная часть официального PANNs-кода для загрузки `Cnn14`.
 - Большой checkpoint скачивается в пользовательскую REAPER data-папку и не хранится в Git.
 - В первой версии приоритет у надёжности и fallback-поведения, а не у максимального ускорения любой ценой.
+- Отчёт — это clip-level tagging-подсказка, а не event detection или timeline localization.

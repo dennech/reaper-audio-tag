@@ -66,10 +66,14 @@ local function start_analysis()
     state.result = {
       status = "error",
       backend = "cpu",
-      timing_ms = { total = 0 },
+      attempted_backends = { "cpu" },
+      timing_ms = { preprocess = 0, inference = 0, total = 0 },
+      summary = "No analysis summary is available.",
       predictions = {},
       highlights = {},
       warnings = {},
+      model_status = { name = "Cnn14", source = "managed-runtime" },
+      item = {},
       error = { code = "export_failed", message = err },
     }
     return
@@ -160,14 +164,21 @@ local function render_loading()
   end
 end
 
-local function render_prediction_rows(vm, limit)
+local function render_prediction_rows(vm, limit, show_support)
   for index, prediction in ipairs(vm.predictions) do
     if index > limit then
       break
     end
-    ImGui.Text(ctx, string.format("%s %s", prediction.bucket and "•" or "", prediction.label))
+    local icon = report_presenter.bucket_icon(prediction.bucket)
+    ImGui.Text(ctx, string.format("%s %s", icon, prediction.label))
     ImGui.SameLine(ctx, 0, 12)
     ImGui.ProgressBar(ctx, prediction.score, 180, 0, string.format("%d%%", math.floor(prediction.score * 100 + 0.5)))
+    if show_support then
+      local peak_score = tonumber(prediction.peak_score) or tonumber(prediction.score) or 0
+      local support_count = tonumber(prediction.support_count) or 0
+      local segment_count = tonumber(prediction.segment_count) or 0
+      ImGui.TextDisabled(ctx, string.format("Support %d/%d segments | Peak %.2f", support_count, segment_count, peak_score))
+    end
   end
 end
 
@@ -206,9 +217,9 @@ local function render_result()
 
   ImGui.Separator(ctx)
   if state.current_view == "compact" then
-    render_prediction_rows(vm, 5)
+    render_prediction_rows(vm, 5, false)
   else
-    render_prediction_rows(vm, math.min(#vm.predictions, 12))
+    render_prediction_rows(vm, math.min(#vm.predictions, 12), true)
     if #vm.warnings > 0 then
       ImGui.Spacing(ctx)
       ImGui.TextColored(ctx, badge_color("warning"), "Warnings")
@@ -216,16 +227,22 @@ local function render_result()
         ImGui.BulletText(ctx, warning)
       end
     end
+    if #vm.attempted_backends > 0 then
+      ImGui.Spacing(ctx)
+      ImGui.TextWrapped(ctx, "Attempted backends: " .. table.concat(vm.attempted_backends, " -> "))
+    end
     if vm.model_status.name or vm.model_status.source then
       ImGui.Spacing(ctx)
       ImGui.TextWrapped(ctx, string.format("Model: %s", tostring(vm.model_status.name or "Cnn14")))
       ImGui.TextWrapped(ctx, string.format("Source: %s", tostring(vm.model_status.source or "managed runtime")))
     end
+    ImGui.Spacing(ctx)
+    ImGui.TextDisabled(ctx, "Clip-level tagging only; not event detection.")
   end
 end
 
 local function render_error()
-  local error_text = report_presenter.error_report(state.result and state.result.error or nil)
+  local error_text = report_presenter.error_report(state.result)
   ImGui.TextWrapped(ctx, error_text)
   ImGui.Spacing(ctx)
   if ImGui.Button(ctx, "Retry") then

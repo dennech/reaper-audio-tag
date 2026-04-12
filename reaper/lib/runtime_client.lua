@@ -5,6 +5,13 @@ local M = {}
 
 local SCHEMA_VERSION = "reaper-panns-item-report/v1"
 
+local function attempted_backends(requested_backend)
+  if requested_backend == "cpu" then
+    return { "cpu" }
+  end
+  return { "mps", "cpu" }
+end
+
 local function read_json(path)
   local text = path_utils.read_file(path)
   if not text then
@@ -48,6 +55,34 @@ end
 local function write_request(path, payload)
   local text = json.encode(payload)
   path_utils.write_file(path, text)
+end
+
+local function error_payload(job, code, message, backend, warnings, elapsed_ms)
+  local requested_backend = job and job.request_payload and job.request_payload.requested_backend or "auto"
+  return {
+    schema_version = SCHEMA_VERSION,
+    status = "error",
+    backend = backend or "cpu",
+    attempted_backends = attempted_backends(requested_backend),
+    timing_ms = {
+      preprocess = 0,
+      inference = 0,
+      total = elapsed_ms or 0,
+    },
+    summary = "No analysis summary is available.",
+    predictions = {},
+    highlights = {},
+    warnings = warnings or {},
+    model_status = {
+      name = "Cnn14",
+      source = "managed-runtime",
+    },
+    item = job and job.request_payload and job.request_payload.item_metadata or {},
+    error = {
+      code = code,
+      message = message,
+    },
+  }
 end
 
 function M.start_job(paths, item_payload, options)
@@ -123,19 +158,7 @@ function M.poll_job(job)
     end
     return {
       done = true,
-      payload = {
-        schema_version = SCHEMA_VERSION,
-        status = "error",
-        backend = "cpu",
-        timing_ms = { total = 0 },
-        predictions = {},
-        highlights = {},
-        warnings = {},
-        error = {
-          code = "malformed_json",
-          message = "Runtime returned malformed JSON: " .. tostring(err),
-        },
-      },
+      payload = error_payload(job, "malformed_json", "Runtime returned malformed JSON: " .. tostring(err), "cpu", {}, 0),
     }
   end
 
@@ -143,19 +166,14 @@ function M.poll_job(job)
   if elapsed > job.timeout_sec then
     return {
       done = true,
-      payload = {
-        schema_version = SCHEMA_VERSION,
-        status = "error",
-        backend = "cpu",
-        timing_ms = { total = math.floor(elapsed * 1000) },
-        predictions = {},
-        highlights = {},
-        warnings = { "The runtime timed out." },
-        error = {
-          code = "timeout",
-          message = "Analysis timed out before the runtime produced a result file.",
-        },
-      },
+      payload = error_payload(
+        job,
+        "timeout",
+        "Analysis timed out before the runtime produced a result file.",
+        "cpu",
+        { "The runtime timed out." },
+        math.floor(elapsed * 1000)
+      ),
     }
   end
 

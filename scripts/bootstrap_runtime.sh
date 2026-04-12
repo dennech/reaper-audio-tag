@@ -25,9 +25,10 @@ VENV_DIR="${APP_DIR}/runtime/venv"
 mkdir -p "${APP_DIR}/runtime"
 "${PYTHON_BIN}" -m venv "${VENV_DIR}"
 "${VENV_DIR}/bin/python" -m pip install --upgrade pip setuptools wheel
-"${VENV_DIR}/bin/python" -m pip install -e "${REPO_ROOT}"
 if [[ "${INSTALL_DEV}" == "1" ]]; then
   "${VENV_DIR}/bin/python" -m pip install -e "${REPO_ROOT}[dev]"
+else
+  "${VENV_DIR}/bin/python" -m pip install --upgrade "${REPO_ROOT}"
 fi
 
 export REAPER_RESOURCE_PATH
