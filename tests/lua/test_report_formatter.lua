@@ -87,4 +87,34 @@ function tests.test_bucket_icons_are_distinct()
   luaunit.assertEquals(formatter.bucket_icon('weak'), '•')
 end
 
+function tests.test_main_script_passes_ctx_to_imgui_calls()
+  local handle = assert(io.open('reaper/PANNs Item Report.lua', 'rb'))
+  local source = handle:read('*a')
+  handle:close()
+
+  local imgui_functions = {
+    'Text',
+    'TextWrapped',
+    'TextDisabled',
+    'TextColored',
+    'BulletText',
+    'ProgressBar',
+    'SameLine',
+    'Spacing',
+    'Separator',
+  }
+
+  for line in source:gmatch('[^\r\n]+') do
+    for _, fn_name in ipairs(imgui_functions) do
+      if line:find('ImGui%.' .. fn_name .. '%(') then
+        luaunit.assertEquals(
+          line:find('ImGui%.' .. fn_name .. '%(%s*ctx[,%)]') ~= nil,
+          true,
+          'Expected ctx argument in line: ' .. line
+        )
+      end
+    end
+  end
+end
+
 return tests

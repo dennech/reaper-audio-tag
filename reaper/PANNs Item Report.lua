@@ -58,6 +58,22 @@ local function badge_color(kind)
   return 0xD8C36FFF
 end
 
+local function internal_ui_error_result(message)
+  return {
+    status = "error",
+    backend = "cpu",
+    attempted_backends = { "cpu" },
+    timing_ms = { preprocess = 0, inference = 0, total = 0 },
+    summary = "No analysis summary is available.",
+    predictions = {},
+    highlights = {},
+    warnings = { "The report window hit an internal UI rendering error." },
+    model_status = { name = "Cnn14", source = "managed-runtime" },
+    item = {},
+    error = { code = "ui_render_failed", message = message },
+  }
+end
+
 local function start_analysis()
   local export_path = path_utils.join(paths.tmp_dir, "selected-item-" .. path_utils.sanitize_job_id(reaper.genGuid("")) .. ".wav")
   local export_payload, err = audio_export.export_selected_item(export_path)
@@ -155,8 +171,15 @@ local function render_loading()
   ImGui.TextWrapped(ctx, loading_text)
   ImGui.Spacing(ctx)
 
-  local progress = 0.15 + (math.sin(reaper.time_precise() * 2.2) + 1) * 0.35
-  ImGui.ProgressBar(ctx, progress, -1, 0, "")
+  local timeout_sec = state.job and tonumber(state.job.timeout_sec) or 0
+  local elapsed_sec = state.last_loading_ms / 1000
+  local progress = 0
+  local overlay = string.format("%.1f s", elapsed_sec)
+  if timeout_sec and timeout_sec > 0 then
+    progress = math.min(0.99, state.last_loading_ms / (timeout_sec * 1000))
+    overlay = string.format("%.1f / %d s", elapsed_sec, timeout_sec)
+  end
+  ImGui.ProgressBar(ctx, progress, -1, 0, overlay)
   if state.last_loading_ms > 1000 then
     ImGui.Spacing(ctx)
     ImGui.TextColored(ctx, badge_color("warning"), "Longer analysis: the selected item is still being processed.")
@@ -192,7 +215,7 @@ local function render_result()
   ImGui.Spacing(ctx)
 
   if #vm.highlights > 0 then
-    ImGui.Text("Interesting findings")
+    ImGui.Text(ctx, "Interesting findings")
     for _, row in ipairs(vm.highlights) do
       ImGui.BulletText(ctx, string.format("%s %s (%.0f%%)", row.headline, row.label, (tonumber(row.score) or 0) * 100))
     end
@@ -265,19 +288,26 @@ local function loop()
   ImGui.SetNextWindowSize(ctx, 560, 420, ImGui.Cond_FirstUseEver())
   local visible, open = ImGui.Begin(ctx, "PANNs Item Report", true, ImGui.WindowFlags_NoCollapse())
   if visible then
-    render_header()
-    if state.screen == "setup" then
-      render_setup()
-    elseif state.screen == "loading" then
-      render_loading()
-    elseif state.screen == "result" then
-      render_result()
-    elseif state.screen == "error" then
-      render_error()
-    else
-      ImGui.TextWrapped(ctx, "Preparing the report...")
-    end
+    local ok, err = xpcall(function()
+      render_header()
+      if state.screen == "setup" then
+        render_setup()
+      elseif state.screen == "loading" then
+        render_loading()
+      elseif state.screen == "result" then
+        render_result()
+      elseif state.screen == "error" then
+        render_error()
+      else
+        ImGui.TextWrapped(ctx, "Preparing the report...")
+      end
+    end, debug.traceback)
     ImGui.End(ctx)
+    if not ok then
+      state.job = nil
+      state.screen = "error"
+      state.result = internal_ui_error_result("The report window hit an internal UI error. Reopen the report if the problem persists.\n\n" .. tostring(err))
+    end
   end
 
   if open then
