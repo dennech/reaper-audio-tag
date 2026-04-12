@@ -1,0 +1,11 @@
+PANNs Item Report — Full Report
+Status: ok
+Backend: mps
+Elapsed: 842 ms
+Predictions:
+  - 🎯 sine tone => 0.94
+  - ✨ steady signal => 0.89
+  - ✨ tonal sound => 0.82
+  - 🔎 longer clip => 0.42
+Model: Cnn14
+Source: managed runtime

@@ -1,0 +1,17 @@
+.DS_Store
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+dist/
+build/
+.venv/
+.python-version
+tests/fixtures/generated/
+tests/fixtures/tmp/
+tmp/
+

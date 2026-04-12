@@ -1,0 +1,58 @@
+[build-system]
+requires = ["hatchling>=1.25.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "reaper-panns-item-report"
+version = "0.1.0"
+description = "REAPER item analysis report powered by PANNs Cnn14."
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+license = {text = "MIT"}
+authors = [
+  {name = "Project contributors"},
+]
+dependencies = [
+  "numpy>=1.26,<2.0",
+  "soundfile>=0.12,<1.0",
+  "torch==2.6.0",
+  "torchaudio==2.6.0",
+  "torchlibrosa==0.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.2,<9.0",
+]
+
+[project.scripts]
+reaper-panns-runtime = "reaper_panns_runtime.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["runtime/src/reaper_panns_runtime"]
+include = [
+  "runtime/src/reaper_panns_runtime/_vendor/metadata/*.csv",
+  "runtime/src/reaper_panns_runtime/_vendor/panns/LICENSE.MIT",
+]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/runtime/src/reaper_panns_runtime",
+  "/runtime/README.md",
+  "/runtime/docs",
+  "/reaper",
+  "/tests",
+  "/scripts",
+  "/README.md",
+  "/README.ru.md",
+  "/CHANGELOG.md",
+  "/THIRD_PARTY_NOTICES.md",
+]
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "runtime/src",
+]
+testpaths = [
+  "tests/python",
+]

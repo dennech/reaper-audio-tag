@@ -1,0 +1,4 @@
+PANNs Item Report
+⏳ Analyzing the selected item...
+Elapsed: 1.2 s
+The report will appear here as soon as inference finishes.
