@@ -4,6 +4,8 @@ local path_utils = require("path_utils")
 local M = {}
 
 local SCHEMA_VERSION = "reaper-panns-item-report/v1"
+local DEFAULT_TIMEOUT_SEC = 60
+local MAX_TIMEOUT_SEC = 600
 
 local function attempted_backends(requested_backend)
   if requested_backend == "cpu" then
@@ -57,6 +59,23 @@ local function write_request(path, payload)
   path_utils.write_file(path, text)
 end
 
+local function positive_number(value)
+  local numeric = tonumber(value)
+  if numeric and numeric > 0 then
+    return numeric
+  end
+  return nil
+end
+
+function M.suggest_timeout_sec(item_payload, requested_backend)
+  local item_metadata = item_payload and item_payload.item_metadata or {}
+  local item_length = positive_number(item_metadata.item_length) or 0
+  local multiplier = requested_backend == "cpu" and 5 or 4
+  local computed = math.ceil((item_length * multiplier) + 30)
+  computed = math.max(DEFAULT_TIMEOUT_SEC, computed)
+  return math.min(MAX_TIMEOUT_SEC, computed)
+end
+
 local function error_payload(job, code, message, backend, warnings, elapsed_ms)
   local requested_backend = job and job.request_payload and job.request_payload.requested_backend or "auto"
   return {
@@ -108,17 +127,19 @@ function M.start_job(paths, item_payload, options)
   local request_file = path_utils.join(job_dir, "request.json")
   local result_file = path_utils.join(job_dir, "result.json")
   local log_file = path_utils.join(job_dir, "runtime.log")
+  local requested_backend = options.requested_backend or "auto"
+  local timeout_sec = positive_number(options.timeout_sec) or M.suggest_timeout_sec(item_payload, requested_backend)
 
   local request_payload = {
     schema_version = SCHEMA_VERSION,
     temp_audio_path = item_payload.temp_audio_path,
     item_metadata = item_payload.item_metadata,
-    requested_backend = options.requested_backend or "auto",
-    timeout_sec = options.timeout_sec or 30,
+    requested_backend = requested_backend,
+    timeout_sec = timeout_sec,
   }
   write_request(request_file, request_payload)
 
-  local inner = table.concat({
+  local command = table.concat({
     path_utils.sh_quote(python_path),
     "-m",
     "reaper_panns_runtime",
@@ -127,11 +148,9 @@ function M.start_job(paths, item_payload, options)
     path_utils.sh_quote(request_file),
     "--result-file",
     path_utils.sh_quote(result_file),
-    ">",
+    "--log-file",
     path_utils.sh_quote(log_file),
-    "2>&1",
   }, " ")
-  local command = "/bin/sh -lc " .. path_utils.sh_quote(inner)
 
   reaper.ExecProcess(command, -1)
 
@@ -142,7 +161,7 @@ function M.start_job(paths, item_payload, options)
     result_file = result_file,
     log_file = log_file,
     started_at = reaper.time_precise(),
-    timeout_sec = options.timeout_sec or 30,
+    timeout_sec = timeout_sec,
     request_payload = request_payload,
   }
 end

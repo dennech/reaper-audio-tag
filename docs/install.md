@@ -17,6 +17,7 @@
 8. Select one audio item and run the script.
 
 If you downloaded the public source release from GitHub, you can unpack it anywhere and run `scripts/bootstrap.command` directly. Cloning is only required for development.
+If you pull a newer revision of the repository later, run `scripts/bootstrap.command` once again so the managed runtime inside REAPER picks up the new package version.
 
 ## Where the runtime stores data
 

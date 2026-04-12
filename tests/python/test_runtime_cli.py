@@ -102,6 +102,68 @@ def test_analyze_cli_works_with_fake_model() -> None:
         validate_response(payload)
 
 
+def test_analyze_cli_writes_log_file_when_requested() -> None:
+    with tempfile.TemporaryDirectory() as temp_dir:
+        resource_dir = Path(temp_dir) / "REAPER"
+        data_dir = resource_dir / "Data" / "reaper-panns-item-report"
+        data_dir.mkdir(parents=True, exist_ok=True)
+        model_path = data_dir / "models" / "Cnn14_mAP=0.431.pth"
+        model_path.parent.mkdir(parents=True, exist_ok=True)
+        model_path.write_bytes(b"placeholder")
+        config_path = data_dir / "config.json"
+        config_path.write_text(
+            json.dumps(
+                {
+                    "schema_version": SCHEMA_VERSION,
+                    "model": {"name": "Cnn14", "path": str(model_path)},
+                    "runtime": {"preferred_backend": "cpu", "cpu_threads": 2},
+                },
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        fixtures = generate_audio_fixtures(Path(temp_dir) / "fixtures")
+        audio_path = Path(fixtures["fixtures"][1]["path"])
+        request_path = Path(temp_dir) / "request.json"
+        log_path = Path(temp_dir) / "runtime.log"
+        request_path.write_text(
+            json.dumps(
+                {
+                    "schema_version": SCHEMA_VERSION,
+                    "temp_audio_path": str(audio_path),
+                    "item_metadata": {"item_name": "tone_440hz", "item_length": 10.0},
+                    "requested_backend": "auto",
+                    "timeout_sec": 15,
+                },
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        stdout = io.StringIO()
+        with patch.dict(
+            os.environ,
+            {
+                "REAPER_RESOURCE_PATH": str(resource_dir),
+                "REAPER_PANNS_FAKE_MODEL": "1",
+            },
+            clear=False,
+        ):
+            with contextlib.redirect_stdout(stdout):
+                exit_code = main(["analyze", "--request-file", str(request_path), "--log-file", str(log_path)])
+
+        payload = json.loads(stdout.getvalue())
+        assert exit_code == 0
+        assert payload["status"] == "ok"
+        assert log_path.exists()
+        log_text = log_path.read_text(encoding="utf-8")
+        assert "Analyze started." in log_text
+        assert "Analyze finished successfully." in log_text
+
+
 def test_analyze_cli_ignores_request_model_path_override() -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
         resource_dir = Path(temp_dir) / "REAPER"

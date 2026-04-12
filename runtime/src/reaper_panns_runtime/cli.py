@@ -4,6 +4,8 @@ import argparse
 import json
 import os
 import sys
+import time
+import traceback
 from pathlib import Path
 from typing import Any
 
@@ -34,10 +36,24 @@ def _configured_model_path(config: dict[str, Any]) -> Path:
     return Path(config["model"]["path"])
 
 
+def _log_line(log_file: Path | None, message: str) -> None:
+    if log_file is None:
+        return
+    log_file.parent.mkdir(parents=True, exist_ok=True)
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    with log_file.open("a", encoding="utf-8") as handle:
+        handle.write(f"[{timestamp}] {message}\n")
+    if os.name != "nt":
+        os.chmod(log_file, 0o600)
+
+
 def _analyze(args: argparse.Namespace) -> int:
+    log_file = Path(args.log_file) if args.log_file else None
+    _log_line(log_file, f"Analyze started. request_file={args.request_file}")
     try:
         request = validate_request(read_json(args.request_file))
     except ContractError as exc:
+        _log_line(log_file, f"Request validation failed: {exc.code}: {exc.message}")
         payload = error_response(
             exc.message,
             code=exc.code,
@@ -51,10 +67,12 @@ def _analyze(args: argparse.Namespace) -> int:
     paths = default_paths()
     requested_backend = request.get("requested_backend") or "auto"
     default_model_status = {"name": "Cnn14", "source": "managed-runtime"}
+    _log_line(log_file, f"Validated request. requested_backend={requested_backend}")
 
     try:
         config = load_config(paths)
     except FileNotFoundError:
+        _log_line(log_file, "Runtime config is missing. bootstrap.command must be run first.")
         payload = error_response(
             "Runtime is not configured yet. Run scripts/bootstrap.command first.",
             code="runtime_not_bootstrapped",
@@ -76,15 +94,24 @@ def _analyze(args: argparse.Namespace) -> int:
         "name": config["model"]["name"],
         "source": "managed-runtime",
     }
+    _log_line(
+        log_file,
+        (
+            f"Resolved managed runtime. backend_strategy={requested_backend} "
+            f"audio={audio_path.name} item_length={request['item_metadata'].get('item_length', 'n/a')}"
+        ),
+    )
 
     try:
         if args.fake_model or os.environ.get("REAPER_PANNS_FAKE_MODEL") == "1":
+            _log_line(log_file, "Using fake model.")
             result = analyze_with_fake_model(audio_path)
             backend = "fake"
             warnings = []
             timing = zero_timing_ms()
             attempted_backends = ["fake"]
         else:
+            _log_line(log_file, "Running real model inference.")
             runtime_result = analyze_audio_file(audio_path, model_path, primary_backend=requested_backend)
             result = runtime_result
             backend = runtime_result["backend"]
@@ -106,7 +133,18 @@ def _analyze(args: argparse.Namespace) -> int:
             item=request["item_metadata"],
             error=None,
         )
+        _log_line(
+            log_file,
+            (
+                f"Analyze finished successfully. backend={backend} "
+                f"attempted={attempted_backends} total_ms={timing['total']}"
+            ),
+        )
     except InferenceError as exc:
+        _log_line(
+            log_file,
+            f"Inference failed after backend attempts {exc.attempted_backends}: {exc}. warnings={exc.warnings}",
+        )
         payload = error_response(
             str(exc),
             code="backend_attempts_failed",
@@ -117,6 +155,8 @@ def _analyze(args: argparse.Namespace) -> int:
             item=request["item_metadata"],
         )
     except Exception as exc:
+        _log_line(log_file, f"Unexpected analysis failure: {exc}")
+        _log_line(log_file, traceback.format_exc().rstrip())
         payload = error_response(
             str(exc),
             code="analysis_failed",
@@ -130,6 +170,7 @@ def _analyze(args: argparse.Namespace) -> int:
 
     if args.result_file:
         write_json(args.result_file, payload)
+        _log_line(log_file, f"Wrote result file: {args.result_file}")
     else:
         _dump(payload)
     return 0 if payload["status"] == "ok" else 1
@@ -172,6 +213,7 @@ def build_parser() -> argparse.ArgumentParser:
     analyze_parser = subparsers.add_parser("analyze", help="Analyze a prepared WAV request file.")
     analyze_parser.add_argument("--request-file", required=True)
     analyze_parser.add_argument("--result-file")
+    analyze_parser.add_argument("--log-file")
     analyze_parser.add_argument("--fake-model", action="store_true")
     analyze_parser.set_defaults(func=_analyze)
 

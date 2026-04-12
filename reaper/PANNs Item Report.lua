@@ -81,7 +81,6 @@ local function start_analysis()
 
   local job, job_err = runtime_client.start_job(paths, export_payload, {
     requested_backend = "auto",
-    timeout_sec = 45,
   })
   if not job then
     state.screen = "setup"
@@ -252,6 +251,12 @@ local function render_error()
   ImGui.SameLine(ctx)
   if ImGui.Button(ctx, "Open bootstrap.command") then
     runtime_client.open_bootstrap(paths)
+  end
+  if state.job and path_utils.exists(state.job.log_file) then
+    ImGui.SameLine(ctx)
+    if ImGui.Button(ctx, "Open log") then
+      reaper.ExecProcess("open " .. path_utils.sh_quote(state.job.log_file), -2)
+    end
   end
 end
 

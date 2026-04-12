@@ -13,6 +13,14 @@ def _json_dump(payload: dict[str, object]) -> None:
     sys.stdout.write(json.dumps(payload, indent=2, sort_keys=True) + "\n")
 
 
+def _write_log(log_file: str | None, message: str) -> None:
+    if not log_file:
+        return
+    path = Path(log_file)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(message + "\n", encoding="utf-8")
+
+
 def _load_json_file(path: str | None) -> dict[str, object]:
     if not path:
         return json.loads(sys.stdin.read())
@@ -61,6 +69,7 @@ def cmd_probe(args: argparse.Namespace) -> int:
 
 
 def cmd_analyze(args: argparse.Namespace) -> int:
+    _write_log(args.log_file, "fake analyze invoked")
     try:
         request = _load_json_file(args.request_file)
         normalized = validate_request(request)
@@ -98,6 +107,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     analyze = subparsers.add_parser("analyze", help="analyze one audio item")
     analyze.add_argument("--request-file", help="JSON request file")
+    analyze.add_argument("--log-file")
     analyze.add_argument("--allow-mps", action="store_true")
     analyze.set_defaults(func=cmd_analyze)
 

@@ -85,10 +85,81 @@ function tests.test_start_job_uses_managed_python_and_ignores_config_executable(
   luaunit.assertEquals(err, nil)
   luaunit.assertEquals(job ~= nil, true)
   luaunit.assertStrContains(captured.command, path_utils.sh_quote(managed_python))
+  luaunit.assertStrContains(captured.command, "--log-file")
+  luaunit.assertEquals(string.find(captured.command, "/bin/sh -lc", 1, true), nil)
+  luaunit.assertEquals(string.find(captured.command, ">", 1, true), nil)
   luaunit.assertEquals(string.find(captured.command, '/tmp/evil-python', 1, true), nil)
+  luaunit.assertEquals(job.timeout_sec, 12)
 
   local request_text = assert(path_utils.read_file(job.request_file))
   luaunit.assertEquals(string.find(request_text, 'model_path', 1, true), nil)
+
+  os.execute('rm -rf ' .. path_utils.sh_quote(temp_root))
+end
+
+function tests.test_start_job_scales_timeout_for_long_items()
+  local original_reaper = _G.reaper
+  local temp_root = mktemp_dir()
+
+  local managed_python = path_utils.join(temp_root, 'runtime', 'venv', 'bin', 'python')
+  os.execute('mkdir -p ' .. path_utils.sh_quote(path_utils.dirname(managed_python)))
+  local python_handle = assert(io.open(managed_python, 'wb'))
+  python_handle:write('#!/usr/bin/env python3\n')
+  python_handle:close()
+
+  local config_path = path_utils.join(temp_root, 'config.json')
+  write_json(config_path, {
+    schema_version = 'reaper-panns-item-report/v1',
+    model = {
+      name = 'Cnn14',
+      path = '/tmp/model.pth',
+    },
+    runtime = {
+      preferred_backend = 'cpu',
+      cpu_threads = 2,
+    },
+  })
+
+  _G.reaper = {
+    RecursiveCreateDirectory = function(path)
+      os.execute('mkdir -p ' .. path_utils.sh_quote(path))
+    end,
+    ExecProcess = function()
+      return 0
+    end,
+    genGuid = function()
+      return '{job-guid}'
+    end,
+    time_precise = function()
+      return 1.25
+    end,
+  }
+
+  local job, err = runtime_client.start_job(
+    {
+      config_path = config_path,
+      python_path = managed_python,
+      jobs_dir = path_utils.join(temp_root, 'jobs'),
+      os_name = 'OSX64',
+    },
+    {
+      temp_audio_path = '/tmp/item.wav',
+      item_metadata = {
+        item_name = 'Long Item',
+        item_length = 39.25,
+      },
+    },
+    {
+      requested_backend = 'auto',
+    }
+  )
+
+  _G.reaper = original_reaper
+
+  luaunit.assertEquals(err, nil)
+  luaunit.assertEquals(job ~= nil, true)
+  luaunit.assertEquals(job.timeout_sec > 45, true)
+  luaunit.assertEquals(job.request_payload.timeout_sec, job.timeout_sec)
 
   os.execute('rm -rf ' .. path_utils.sh_quote(temp_root))
 end

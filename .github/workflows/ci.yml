@@ -16,6 +16,11 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install Python test dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install "numpy>=1.26,<2.0" "soundfile>=0.12,<1.0" "pytest>=8.2,<9.0"
+
       - name: Run Python tests
         run: |
           python3 tests/scripts/run_python_tests.py --scope python
@@ -31,4 +36,3 @@ jobs:
       - name: Run Lua tests
         run: |
           lua tests/lua/run_tests.lua
-

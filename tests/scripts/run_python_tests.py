@@ -34,9 +34,11 @@ def _repo_root() -> pathlib.Path:
 
 
 def _ensure_sys_path() -> None:
-    root = str(_repo_root())
-    if root not in sys.path:
-        sys.path.insert(0, root)
+    root_path = _repo_root()
+    for candidate in (root_path, root_path / "runtime" / "src"):
+        path = str(candidate)
+        if path not in sys.path:
+            sys.path.insert(0, path)
 
 
 def _load_modules(scope: str) -> list[ModuleType]:
