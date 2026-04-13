@@ -4,6 +4,10 @@
 
 v1 intentionally stays narrow: macOS first, one selected audio item at a time, and `clipwise audio tagging` only. It is a practical analysis helper for fast spot checks, not a timeline event detector.
 
+![REAPER Audio Tag report window](docs/images/reaper-audio-tag-hero.png)
+
+_Current REAPER Audio Tag report window on macOS with wrapped tag chips and emoji atlas icons._
+
 ## Status
 
 - v1 target: `macOS Apple Silicon + Intel Mac`

@@ -4,6 +4,10 @@
 
 v1 намеренно ограничен: сначала macOS, только один выбранный аудио-айтем за запуск и только `clipwise audio tagging`. Это практичный инструмент для быстрых spot-check проверок, а не timeline/event detector.
 
+![Окно отчёта REAPER Audio Tag](docs/images/reaper-audio-tag-hero.png)
+
+_Актуальный вид окна REAPER Audio Tag на macOS с wrapping-плашками tags и emoji-иконками из atlas pipeline._
+
 ## Статус
 
 - Целевая первая версия: `macOS Apple Silicon + Intel Mac`

@@ -20,3 +20,4 @@
 - Changed the main report to show the full tag ranking as wrapped pill chips and normalized chip colors across `Strong`, `Solid`, `Possible`, and `Low` buckets.
 - Removed the temporary on-screen diagnostics block, debug-log path readout, and report-window log buttons after the REAPER slowdown investigation stabilized.
 - Rebranded the public action to `REAPER Audio Tag`, added backward-compatible legacy script shims for existing REAPER action paths, and mapped `Plop` plus liquid-family labels to a bundled bubble icon.
+- Added a tracked README hero screenshot under `docs/images/` so the public repository landing pages show the current macOS report UI.
