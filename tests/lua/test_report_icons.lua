@@ -67,7 +67,13 @@ function tests.test_image_invalidates_bad_handle()
       speech = { valid = false },
     },
   }
-  report_icons.invalidate(cache, "speech")
+  local fake_imgui = {
+    ValidatePtr = function(image, kind)
+      return kind == "ImGui_Image*" and image.valid == true
+    end,
+  }
+
+  luaunit.assertEquals(report_icons.image(fake_imgui, cache, "speech"), nil)
   luaunit.assertEquals(cache.images.speech, nil)
   luaunit.assertEquals(cache.loaded, false)
   luaunit.assertEquals(cache.available, false)
@@ -147,7 +153,6 @@ function tests.test_icon_frame_stats_track_lookups_and_invalidations()
   report_icons.begin_frame(cache)
   report_icons.note_draw(cache)
   luaunit.assertEquals(report_icons.image(fake_imgui, cache, "speech") ~= nil, true)
-  report_icons.invalidate(cache, "breath")
   luaunit.assertEquals(report_icons.image(fake_imgui, cache, "breath"), nil)
 
   local stats = report_icons.frame_stats(cache)
@@ -156,6 +161,7 @@ function tests.test_icon_frame_stats_track_lookups_and_invalidations()
   luaunit.assertEquals(stats.hits, 1)
   luaunit.assertEquals(stats.misses, 1)
   luaunit.assertEquals(stats.invalidations, 1)
+  luaunit.assertEquals(stats.validate_calls >= 2, true)
 end
 
 return tests

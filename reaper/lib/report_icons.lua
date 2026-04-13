@@ -158,9 +158,12 @@ end
 function M.image(ImGui, cache, icon_key)
   bump(cache, "image_calls", 1)
   local image = cache and cache.images and cache.images[icon_key] or nil
-  if image ~= nil then
+  if image ~= nil and M.is_valid_image(ImGui, image, cache) then
     bump(cache, "hits", 1)
     return image
+  end
+  if image ~= nil then
+    M.invalidate(cache, icon_key)
   end
   bump(cache, "misses", 1)
   return nil
