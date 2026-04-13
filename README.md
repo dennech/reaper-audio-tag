@@ -39,13 +39,26 @@ _Current REAPER Audio Tag report window on macOS with wrapped tag chips and emoj
 
 ## Quick Start
 
-1. Clone this repository.
-2. Run [`scripts/bootstrap.command`](scripts/bootstrap.command) once.
-3. In REAPER, load [`reaper/REAPER Audio Tag.lua`](reaper/REAPER%20Audio%20Tag.lua) into the Actions list.
-4. Select exactly one audio item.
-5. Run `REAPER Audio Tag`.
+1. Install REAPER `7.x`.
+2. Make sure `ReaPack` is available in REAPER.
+3. In ReaPack, install `ReaImGui: ReaScript binding for Dear ImGui`, then restart REAPER.
+4. Install Python `3.11`.
+5. Download the latest ZIP from the [GitHub Releases page](https://github.com/dennech/reaper-audio-tag/releases/latest).
+6. Unpack it anywhere on your Mac.
+7. Run [`scripts/bootstrap.command`](scripts/bootstrap.command) once.
+8. In REAPER, load [`reaper/REAPER Audio Tag.lua`](reaper/REAPER%20Audio%20Tag.lua) into the Actions list.
+9. Select exactly one audio item.
+10. Run `REAPER Audio Tag`.
 
-If you are installing from the public release, downloading the source archive and running `scripts/bootstrap.command` is enough. Cloning is only needed for development.
+`git clone` is only needed for development. A normal user install should work from the downloaded ZIP alone.
+
+What `bootstrap.command` does:
+
+- creates the managed Python environment in the REAPER app data directory
+- installs the packaged runtime used by the script
+- downloads `Cnn14_mAP=0.431.pth` automatically
+- verifies the checkpoint before enabling it
+- writes the REAPER-side runtime config
 
 Detailed setup instructions:
 

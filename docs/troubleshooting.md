@@ -2,14 +2,18 @@
 
 ## The script says ReaImGui is missing
 
-- Open ReaPack inside REAPER.
+- First confirm that `Extensions -> ReaPack -> Browse Packages...` exists in REAPER.
+- If it does not, install ReaPack first and restart REAPER.
+- Then open ReaPack inside REAPER.
 - Install `ReaImGui: ReaScript binding for Dear ImGui`.
 - Restart REAPER.
 
 ## The script asks to run bootstrap
 
+- Make sure you are running the script from an unpacked GitHub release ZIP or from a development checkout.
 - Run `scripts/bootstrap.command`.
 - Confirm that `config.json` exists in the REAPER user data directory.
+- This step also downloads and verifies the PANNs checkpoint automatically.
 - Do not point the script at a system Python manually; it expects the managed runtime under `Data/reaper-panns-item-report/runtime/venv`.
 - For development-only editable installs, run `scripts/bootstrap_runtime.sh --dev`.
 
@@ -21,6 +25,7 @@
 ## The model download fails
 
 - Check your internet connection.
+- Confirm that you are using the unpacked project folder and not launching the Lua file from a temporary preview location.
 - Delete the partially downloaded checkpoint from `.local-models/` first, or from the REAPER fallback model directory if bootstrap had to use the fallback path.
 - Run `scripts/bootstrap.command` again.
 

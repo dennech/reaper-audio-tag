@@ -39,13 +39,26 @@ _Актуальный вид окна REAPER Audio Tag на macOS с wrapping-п
 
 ## Быстрый старт
 
-1. Склонируй репозиторий.
-2. Один раз запусти [`scripts/bootstrap.command`](scripts/bootstrap.command).
-3. В REAPER добавь [`reaper/REAPER Audio Tag.lua`](reaper/REAPER%20Audio%20Tag.lua) в Actions list.
-4. Выбери ровно один аудио-item.
-5. Запусти `REAPER Audio Tag`.
+1. Установи REAPER `7.x`.
+2. Убедись, что в REAPER установлен `ReaPack`.
+3. Через ReaPack установи `ReaImGui: ReaScript binding for Dear ImGui`, затем перезапусти REAPER.
+4. Установи Python `3.11`.
+5. Скачай актуальный ZIP со страницы [GitHub Releases](https://github.com/dennech/reaper-audio-tag/releases/latest).
+6. Распакуй архив в любую папку на Mac.
+7. Один раз запусти [`scripts/bootstrap.command`](scripts/bootstrap.command).
+8. В REAPER добавь [`reaper/REAPER Audio Tag.lua`](reaper/REAPER%20Audio%20Tag.lua) в Actions list.
+9. Выбери ровно один аудио-item.
+10. Запусти `REAPER Audio Tag`.
 
-Если ты ставишь публичный релиз, достаточно скачать source archive и запустить `scripts/bootstrap.command`. Клонирование нужно только для разработки.
+`git clone` нужен только для разработки. Обычная пользовательская установка должна воспроизводиться прямо из скачанного ZIP.
+
+Что делает `bootstrap.command`:
+
+- создаёт управляемое Python-окружение в REAPER app data directory
+- устанавливает packaged runtime, который использует скрипт
+- автоматически скачивает `Cnn14_mAP=0.431.pth`
+- проверяет checkpoint перед активацией
+- записывает REAPER-side runtime config
 
 Подробная установка:
 

@@ -2,14 +2,18 @@
 
 ## Скрипт пишет, что не найден ReaImGui
 
-- Открой ReaPack внутри REAPER.
+- Сначала проверь, есть ли в REAPER меню `Extensions -> ReaPack -> Browse Packages...`.
+- Если меню нет, сначала установи ReaPack и перезапусти REAPER.
+- Затем открой ReaPack внутри REAPER.
 - Установи `ReaImGui: ReaScript binding for Dear ImGui`.
 - Перезапусти REAPER.
 
 ## Скрипт просит запустить bootstrap
 
+- Убедись, что ты запускаешь скрипт из распакованного GitHub ZIP или из developer checkout.
 - Запусти `scripts/bootstrap.command`.
 - Проверь, что `config.json` появился в REAPER user data directory.
+- Этот шаг автоматически скачивает и проверяет checkpoint модели PANNs.
 - Не подсовывай системный Python вручную: скрипт ожидает управляемый runtime в `Data/reaper-panns-item-report/runtime/venv`.
 - Для development-only editable install используй `scripts/bootstrap_runtime.sh --dev`.
 
@@ -21,6 +25,7 @@
 ## Не скачивается модель
 
 - Проверь интернет.
+- Убедись, что проект распакован в обычную папку, а Lua action не запускается из временной preview-локации.
 - Сначала удали частично скачанный checkpoint из `.local-models/`, а если bootstrap работал через fallback — из REAPER model directory.
 - Снова запусти `scripts/bootstrap.command`.
 

@@ -1,24 +1,59 @@
 # Установка
 
-## Поток установки для macOS v1
+## Публичный поток установки для macOS
+
+### 1. Установи основные зависимости
 
 1. Установи REAPER `7.x`.
-2. Установи `ReaImGui` в REAPER через ReaPack.
-3. Установи Python `3.11`.
-4. Склонируй этот репозиторий локально.
-5. Запусти `scripts/bootstrap.command`.
-6. Дождись, пока скрипт:
-   - создаст локальное runtime-окружение
-   - установит packaged Python runtime в управляемый REAPER venv
-   - скачает checkpoint `Cnn14_mAP=0.431.pth`
-   - проверит checkpoint сильной checksum-проверкой перед активацией runtime
-   - запишет runtime config в пользовательскую REAPER data-папку
-7. В REAPER импортируй `reaper/REAPER Audio Tag.lua` в Actions list.
-8. Выбери один аудио-item и запусти скрипт.
-9. После успешного запуска окно можно не закрывать: выбери другой item и нажми `Another`.
+2. Установи Python `3.11`.
 
-Если ты скачал публичный source release с GitHub, его можно просто распаковать в любую папку и запустить `scripts/bootstrap.command`. Клонирование нужно только для разработки.
-Если позже ты подтянешь новую ревизию репозитория, один раз снова запусти `scripts/bootstrap.command`, чтобы управляемый runtime внутри REAPER получил обновлённую версию пакета.
+### 2. Установи ReaPack и ReaImGui в REAPER
+
+1. Открой REAPER.
+2. Проверь, есть ли меню `Extensions -> ReaPack -> Browse Packages...`.
+3. Если этого меню нет, сначала установи ReaPack, перезапусти REAPER и вернись к этому шагу.
+4. Открой `Extensions -> ReaPack -> Browse Packages...`.
+5. Найди `ReaImGui: ReaScript binding for Dear ImGui`.
+6. Установи пакет.
+7. Перезапусти REAPER.
+
+### 3. Скачай ZIP проекта
+
+1. Открой страницу [GitHub Releases](https://github.com/dennech/reaper-audio-tag/releases/latest).
+2. Скачай актуальный ZIP этого проекта.
+3. Распакуй архив в любую папку на Mac.
+
+Для обычной установки `git clone` не нужен. Клонирование остаётся только для разработки.
+
+### 4. Настрой runtime и модель PANNs
+
+1. Открой распакованную папку.
+2. Запусти `scripts/bootstrap.command`.
+3. Дождись завершения.
+
+`bootstrap.command` — это публичная точка входа. Под капотом он вызывает `scripts/bootstrap_runtime.sh`, но обычному пользователю нужно запускать именно `bootstrap.command`.
+
+Что этот шаг делает автоматически:
+
+- создаёт управляемое runtime-окружение
+- устанавливает packaged Python runtime в REAPER-managed venv
+- скачивает checkpoint `Cnn14_mAP=0.431.pth`
+- проверяет checkpoint перед активацией
+- записывает runtime config в пользовательскую REAPER data-папку
+
+В обычном сценарии модель PANNs вручную не ставится. Bootstrap сам скачивает и проверяет её за пользователя.
+
+### 5. Добавь action в REAPER
+
+1. В REAPER импортируй `reaper/REAPER Audio Tag.lua` в Actions list.
+2. Выбери один аудио-item.
+3. Запусти скрипт.
+4. После успешного запуска окно можно не закрывать: выбери другой item и нажми `Another`.
+
+## Настройка для разработчиков
+
+- Разработчики по-прежнему могут клонировать репозиторий и запускать `scripts/bootstrap.command` из checkout.
+- Если позже ты подтянешь новую ревизию, снова запусти `scripts/bootstrap.command`, чтобы управляемый runtime получил обновлённую версию пакета.
 
 ## Где runtime хранит данные
 

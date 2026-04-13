@@ -22,3 +22,4 @@
 - Rebranded the public action to `REAPER Audio Tag`, added backward-compatible legacy script shims for existing REAPER action paths, and mapped `Plop` plus liquid-family labels to a bundled bubble icon.
 - Added a tracked README hero screenshot under `docs/images/` so the public repository landing pages show the current macOS report UI.
 - Added a runtime-mocked Lua regression test that executes the legacy action wrappers and verifies they forward to the renamed script entrypoints on both POSIX and Windows-style paths.
+- Reworked the public install docs so normal users can install from a GitHub release ZIP without `git clone`, with explicit ReaPack/ReaImGui steps and a transparent explanation that `bootstrap.command` downloads and verifies the PANNs model automatically.
