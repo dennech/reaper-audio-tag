@@ -9,28 +9,28 @@ local sample_report = {
   status = 'ok',
   backend = 'mps',
   attempted_backends = { 'mps', 'cpu' },
-  summary = 'Top detected tags: sine tone, steady signal, and tonal sound.',
+  summary = 'Top detected tags: Speech, Speech synthesizer, and Sigh.',
   timing_ms = {
     preprocess = 118,
     inference = 724,
     total = 842,
   },
   predictions = {
-    { rank = 1, label = 'sine tone', score = 0.94, bucket = 'strong', peak_score = 0.97, support_count = 3, segment_count = 3 },
-    { rank = 2, label = 'steady signal', score = 0.89, bucket = 'solid', peak_score = 0.91, support_count = 3, segment_count = 3 },
-    { rank = 3, label = 'tonal sound', score = 0.82, bucket = 'solid', peak_score = 0.85, support_count = 3, segment_count = 3 },
-    { rank = 4, label = 'longer clip', score = 0.42, bucket = 'possible', peak_score = 0.42, support_count = 2, segment_count = 3 },
-    { rank = 5, label = 'soft room noise', score = 0.28, bucket = 'possible', peak_score = 0.31, support_count = 1, segment_count = 3 },
-    { rank = 6, label = 'airy texture', score = 0.19, bucket = 'weak', peak_score = 0.21, support_count = 1, segment_count = 3 },
-    { rank = 7, label = 'distant rustle', score = 0.08, bucket = 'weak', peak_score = 0.11, support_count = 1, segment_count = 3 },
+    { rank = 1, label = 'Speech', score = 0.78, bucket = 'strong', peak_score = 0.81, support_count = 3, segment_count = 3 },
+    { rank = 2, label = 'Speech synthesizer', score = 0.67, bucket = 'solid', peak_score = 0.72, support_count = 3, segment_count = 3 },
+    { rank = 3, label = 'Sigh', score = 0.66, bucket = 'solid', peak_score = 0.68, support_count = 3, segment_count = 3 },
+    { rank = 4, label = 'Narration, monologue', score = 0.11, bucket = 'possible', peak_score = 0.13, support_count = 1, segment_count = 3 },
+    { rank = 5, label = 'Gasp', score = 0.11, bucket = 'possible', peak_score = 0.12, support_count = 1, segment_count = 3 },
+    { rank = 6, label = 'Clicking', score = 0.09, bucket = 'weak', peak_score = 0.10, support_count = 1, segment_count = 3 },
+    { rank = 7, label = 'Unknown texture', score = 0.04, bucket = 'weak', peak_score = 0.06, support_count = 1, segment_count = 3 },
   },
   highlights = {
-    { label = 'sine tone', score = 0.94, bucket = 'strong', headline = 'Likely tag', peak_score = 0.97, support_count = 3, segment_count = 3 },
-    { label = 'steady signal', score = 0.89, bucket = 'solid', headline = 'Consistent tag', peak_score = 0.91, support_count = 3, segment_count = 3 },
-    { label = 'tonal sound', score = 0.82, bucket = 'solid', headline = 'Consistent tag', peak_score = 0.85, support_count = 3, segment_count = 3 },
-    { label = 'soft room noise', score = 0.28, bucket = 'possible', headline = 'Possible cue', peak_score = 0.31, support_count = 1, segment_count = 3 },
-    { label = 'airy texture', score = 0.19, bucket = 'weak', headline = 'Possible cue', peak_score = 0.21, support_count = 1, segment_count = 3 },
-    { label = 'distant rustle', score = 0.08, bucket = 'weak', headline = 'Possible cue', peak_score = 0.11, support_count = 1, segment_count = 3 },
+    { label = 'Speech', score = 0.78, bucket = 'strong', headline = 'Likely tag', peak_score = 0.81, support_count = 3, segment_count = 3 },
+    { label = 'Speech synthesizer', score = 0.67, bucket = 'solid', headline = 'Consistent tag', peak_score = 0.72, support_count = 3, segment_count = 3 },
+    { label = 'Sigh', score = 0.66, bucket = 'solid', headline = 'Consistent tag', peak_score = 0.68, support_count = 3, segment_count = 3 },
+    { label = 'Narration, monologue', score = 0.11, bucket = 'possible', headline = 'Possible cue', peak_score = 0.13, support_count = 1, segment_count = 3 },
+    { label = 'Gasp', score = 0.11, bucket = 'possible', headline = 'Possible cue', peak_score = 0.12, support_count = 1, segment_count = 3 },
+    { label = 'Clicking', score = 0.09, bucket = 'weak', headline = 'Possible cue', peak_score = 0.10, support_count = 1, segment_count = 3 },
   },
   warnings = {},
   error = nil,
@@ -119,9 +119,9 @@ end
 
 function tests.test_compact_report_contains_summary()
   local report = formatter.compact_report(sample_report)
-  luaunit.assertStrContains(report, 'Top detected tags: sine tone, steady signal, and tonal sound.')
+  luaunit.assertStrContains(report, 'Top detected tags: Speech, Speech synthesizer, and Sigh.')
   luaunit.assertStrContains(report, '🔍 More')
-  luaunit.assertStrContains(report, '✨ Tags')
+  luaunit.assertStrContains(report, '✨ Tags ✨')
 end
 
 function tests.test_bucket_icons_are_distinct()
@@ -136,6 +136,28 @@ function tests.test_bucket_icons_have_safe_fallbacks()
   luaunit.assertEquals(formatter.bucket_icon('solid', 'fallback'), '✷')
   luaunit.assertEquals(formatter.bucket_icon('possible', 'fallback'), '❋')
   luaunit.assertEquals(formatter.bucket_icon('weak', 'fallback'), '·')
+end
+
+function tests.test_label_emoji_uses_semantic_mapping()
+  luaunit.assertEquals(formatter.label_emoji('Speech', 'emoji', 'strong'), '🎙️')
+  luaunit.assertEquals(formatter.label_emoji('Speech synthesizer', 'emoji', 'solid'), '🎛️')
+  luaunit.assertEquals(formatter.label_emoji('Sigh', 'emoji', 'solid'), '😮‍💨')
+  luaunit.assertEquals(formatter.label_emoji('Narration, monologue', 'emoji', 'possible'), '🎙️')
+  luaunit.assertEquals(formatter.label_emoji('Gasp', 'emoji', 'possible'), '😮‍💨')
+  luaunit.assertEquals(formatter.label_emoji('Clicking', 'emoji', 'weak'), '🖱️')
+end
+
+function tests.test_label_emoji_uses_safe_fallback_symbols()
+  luaunit.assertEquals(formatter.label_emoji('Speech', 'fallback', 'strong'), '✦')
+  luaunit.assertEquals(formatter.label_emoji('Speech synthesizer', 'fallback', 'solid'), '✷')
+  luaunit.assertEquals(formatter.label_emoji('Sigh', 'fallback', 'solid'), '❋')
+  luaunit.assertEquals(formatter.label_emoji('Clicking', 'fallback', 'weak'), '⌘')
+  luaunit.assertEquals(formatter.label_emoji('Music', 'fallback', 'solid'), '♪')
+end
+
+function tests.test_label_emoji_falls_back_to_bucket_icon_for_unknown_label()
+  luaunit.assertEquals(formatter.label_emoji('Unknown texture', 'emoji', 'weak'), '💭')
+  luaunit.assertEquals(formatter.label_emoji('Unknown texture', 'fallback', 'weak'), '·')
 end
 
 function tests.test_main_script_passes_ctx_to_imgui_calls()
@@ -231,9 +253,9 @@ end
 
 function tests.test_compact_report_uses_expanded_limits()
   local report = formatter.compact_report(sample_report)
-  luaunit.assertStrContains(report, 'soft room noise 28%')
-  luaunit.assertStrContains(report, 'airy texture 19%')
-  luaunit.assertEquals(report:find('distant rustle 8%%') ~= nil, false)
+  luaunit.assertStrContains(report, 'Narration, monologue 11%')
+  luaunit.assertStrContains(report, 'Clicking 9%')
+  luaunit.assertEquals(report:find('Unknown texture 4%%') ~= nil, false)
 end
 
 return tests

@@ -1,17 +1,17 @@
 🎧 PANNs Report
 🌈 ok • mps • 842 ms
-Top detected tags: sine tone, steady signal, and tonal sound.
-🍭 Top cues
-  🎯 sine tone 94%
-  🌟 steady signal 89%
-  🌟 tonal sound 82%
-  🫧 soft room noise 28%
-  💭 airy texture 19%
-✨ Tags
-  1. 🎯 sine tone 94%
-  2. 🌟 steady signal 89%
-  3. 🌟 tonal sound 82%
-  4. 🫧 longer clip 42%
-  5. 🫧 soft room noise 28%
-  6. 💭 airy texture 19%
+Top detected tags: Speech, Speech synthesizer, and Sigh.
+🍭 Top cues 🍭
+  Speech 78% 🎙️
+  Speech synthesizer 67% 🎛️
+  Sigh 66% 😮‍💨
+  Narration, monologue 11% 🎙️
+  Gasp 11% 😮‍💨
+✨ Tags ✨
+  1. Speech 78% 🎙️
+  2. Speech synthesizer 67% 🎛️
+  3. Sigh 66% 😮‍💨
+  4. Gasp 11% 😮‍💨
+  5. Narration, monologue 11% 🎙️
+  6. Clicking 9% 🖱️
 🔍 More

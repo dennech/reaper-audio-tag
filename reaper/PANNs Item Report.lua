@@ -465,14 +465,13 @@ local function render_loading()
 end
 
 local function render_tag_chip(group_id, index, prediction, kind)
-  local icon = report_presenter.bucket_icon(prediction.bucket, state.ui.icon_mode)
-  local visible = string.format("%s %d%%", prediction.label, math.floor((tonumber(prediction.score) or 0) * 100 + 0.5))
-  local button_label = state.ui.icon_mode == "emoji" and visible or string.format("%s %s", icon, visible)
+  local button_label = report_presenter.decorate_chip_label(
+    prediction.label,
+    prediction.score,
+    state.ui.icon_mode,
+    prediction.bucket
+  )
   local count = push_button_style(kind)
-  if state.ui.icon_mode == "emoji" then
-    render_icon_value(icon, badge_color(kind), 15)
-    ImGui.SameLine(ctx, 0, 4)
-  end
   ImGui.PushID(ctx, string.format("%s-%d-%s", group_id, index, prediction.label))
   local pressed = ImGui.Button(ctx, button_label .. "##chip")
   ImGui.PopID(ctx)
@@ -510,7 +509,7 @@ local function render_highlight_pills(vm)
   if #vm.highlights == 0 then
     return
   end
-  render_icon_label("cues", "Top cues", badge_color("accent"))
+  render_icon_label("cues", "Top cues " .. report_presenter.section_emoji("cues", state.ui.icon_mode), badge_color("accent"))
   for index, row in ipairs(vm.highlights) do
     if index > report_presenter.COMPACT_HIGHLIGHT_LIMIT then
       break
@@ -522,7 +521,7 @@ local function render_highlight_pills(vm)
 end
 
 local function render_tag_pills(vm)
-  render_icon_label("tags", "Tags", badge_color("accent"))
+  render_icon_label("tags", "Tags " .. report_presenter.section_emoji("tags", state.ui.icon_mode), badge_color("accent"))
   for index, prediction in ipairs(vm.predictions) do
     if index > report_presenter.COMPACT_TAG_LIMIT then
       break

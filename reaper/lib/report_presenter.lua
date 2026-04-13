@@ -34,6 +34,34 @@ local ICONS = {
   },
 }
 
+local LABEL_EMOJI_RULES = {
+  {
+    patterns = { "synth", "synthesizer", "electronic" },
+    emoji = "🎛️",
+    fallback = "✷",
+  },
+  {
+    patterns = { "speech", "narration", "monologue", "conversation", "talking" },
+    emoji = "🎙️",
+    fallback = "✦",
+  },
+  {
+    patterns = { "sigh", "breath", "gasp", "pant", "exhale", "inhale" },
+    emoji = "😮‍💨",
+    fallback = "❋",
+  },
+  {
+    patterns = { "click", "clicking", "tap", "typing" },
+    emoji = "🖱️",
+    fallback = "⌘",
+  },
+  {
+    patterns = { "music", "song", "melody", "singing" },
+    emoji = "🎵",
+    fallback = "♪",
+  },
+}
+
 local function icon_set(icon_mode)
   if icon_mode == "fallback" then
     return ICONS.fallback
@@ -77,6 +105,34 @@ end
 function M.bucket_icon(bucket, icon_mode)
   local icons = icon_set(icon_mode)
   return icons[bucket] or icon_set("fallback")[bucket] or "•"
+end
+
+local function normalized_label(label)
+  return tostring(label or ""):lower()
+end
+
+function M.section_emoji(section_key, icon_mode)
+  return M.icon(section_key, icon_mode)
+end
+
+function M.label_emoji(label, icon_mode, bucket)
+  local lowered = normalized_label(label)
+  for _, rule in ipairs(LABEL_EMOJI_RULES) do
+    for _, pattern in ipairs(rule.patterns) do
+      if lowered:find(pattern, 1, true) then
+        if icon_mode == "fallback" then
+          return rule.fallback
+        end
+        return rule.emoji
+      end
+    end
+  end
+  return M.bucket_icon(bucket, icon_mode)
+end
+
+function M.decorate_chip_label(label, score, icon_mode, bucket)
+  local percent = math.floor((tonumber(score) or 0) * 100 + 0.5)
+  return string.format("%s %d%% %s", tostring(label or "Unknown"), percent, M.label_emoji(label, icon_mode, bucket))
 end
 
 local function support_text(row)
@@ -136,21 +192,21 @@ function M.compact_report(result, options)
   append(lines, vm.summary)
 
   if #vm.highlights > 0 then
-    append(lines, icons.cues .. " Top cues")
+    append(lines, string.format("%s Top cues %s", icons.cues, M.section_emoji("cues", options and options.icon_mode)))
     for index, row in ipairs(vm.highlights) do
       if index > M.COMPACT_HIGHLIGHT_LIMIT then
         break
       end
-      append(lines, string.format("  %s %s %d%%", M.bucket_icon(row.bucket, options and options.icon_mode), row.label, math.floor((tonumber(row.score) or 0) * 100 + 0.5)))
+      append(lines, "  " .. M.decorate_chip_label(row.label, row.score, options and options.icon_mode, row.bucket))
     end
   end
 
-  append(lines, icons.tags .. " Tags")
+  append(lines, string.format("%s Tags %s", icons.tags, M.section_emoji("tags", options and options.icon_mode)))
   for index, prediction in ipairs(vm.predictions) do
     if index > M.COMPACT_TAG_LIMIT then
       break
     end
-    append(lines, string.format("  %d. %s %s %d%%", index, M.bucket_icon(prediction.bucket, options and options.icon_mode), prediction.label, math.floor((tonumber(prediction.score) or 0) * 100 + 0.5)))
+    append(lines, string.format("  %d. %s", index, M.decorate_chip_label(prediction.label, prediction.score, options and options.icon_mode, prediction.bucket)))
   end
 
   if #vm.warnings > 0 then
