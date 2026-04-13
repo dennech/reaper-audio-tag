@@ -260,6 +260,39 @@ function tests.test_legacy_action_wrappers_still_load()
   luaunit.assertStrContains(source, 'dofile(script_dir .. "REAPER Audio Tag - Debug Export.lua")')
 end
 
+function tests.test_legacy_action_wrappers_execute_forwarding_path_in_mocked_reaper_runtime()
+  local forwarded = {}
+
+  local main_chunk = assert(loadfile("reaper/PANNs Item Report.lua", "t", {
+    reaper = {
+      get_action_context = function()
+        return nil, "/tmp/Projects/My Repo/reaper/PANNs Item Report.lua"
+      end,
+    },
+    dofile = function(path)
+      forwarded[#forwarded + 1] = path
+      return true
+    end,
+  }))
+  main_chunk()
+
+  local debug_chunk = assert(loadfile("reaper/PANNs Item Report - Debug Export.lua", "t", {
+    reaper = {
+      get_action_context = function()
+        return nil, "C:\\Users\\dennech\\Work\\PANNs Reaper Plugin\\reaper\\PANNs Item Report - Debug Export.lua"
+      end,
+    },
+    dofile = function(path)
+      forwarded[#forwarded + 1] = path
+      return true
+    end,
+  }))
+  debug_chunk()
+
+  luaunit.assertEquals(forwarded[1], "/tmp/Projects/My Repo/reaper/REAPER Audio Tag.lua")
+  luaunit.assertEquals(forwarded[2], "C:\\Users\\dennech\\Work\\PANNs Reaper Plugin\\reaper\\REAPER Audio Tag - Debug Export.lua")
+end
+
 function tests.test_export_error_report_hides_runtime_backend_attempts()
   local report = formatter.error_report(export_error_report)
   luaunit.assertEquals(report:find("Tried:", 1, true), nil)
