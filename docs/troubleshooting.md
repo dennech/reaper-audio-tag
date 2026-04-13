@@ -32,8 +32,9 @@
 
 ## The compact view shows symbols instead of emoji
 
-- The script first tries the available ReaImGui font stack for emoji-capable rendering.
-- If that is unavailable, it falls back to safe symbol icons so the UI stays readable.
+- Open `More` and switch `Icons` between `Auto`, `Emoji`, and `Symbols`.
+- `Auto` uses the ReaImGui system-font fallback path for mixed emoji text.
+- `Symbols` forces the safe symbol fallback so the UI stays readable on builds that still refuse to show emoji.
 - This fallback is expected and does not affect analysis quality.
 
 ## I want to inspect export diagnostics without running the model

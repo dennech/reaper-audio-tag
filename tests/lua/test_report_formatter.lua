@@ -132,13 +132,15 @@ function tests.test_bucket_icons_are_distinct()
 end
 
 function tests.test_bucket_icons_have_safe_fallbacks()
-  luaunit.assertEquals(formatter.bucket_icon('strong', 'fallback'), '✦')
-  luaunit.assertEquals(formatter.bucket_icon('solid', 'fallback'), '✷')
-  luaunit.assertEquals(formatter.bucket_icon('possible', 'fallback'), '❋')
+  luaunit.assertEquals(formatter.bucket_icon('strong', 'symbols'), '✦')
+  luaunit.assertEquals(formatter.bucket_icon('solid', 'symbols'), '✷')
+  luaunit.assertEquals(formatter.bucket_icon('possible', 'symbols'), '❋')
+  luaunit.assertEquals(formatter.bucket_icon('weak', 'symbols'), '·')
   luaunit.assertEquals(formatter.bucket_icon('weak', 'fallback'), '·')
 end
 
 function tests.test_label_emoji_uses_semantic_mapping()
+  luaunit.assertEquals(formatter.label_emoji('Speech', 'auto', 'strong'), '🎙️')
   luaunit.assertEquals(formatter.label_emoji('Speech', 'emoji', 'strong'), '🎙️')
   luaunit.assertEquals(formatter.label_emoji('Speech synthesizer', 'emoji', 'solid'), '🎛️')
   luaunit.assertEquals(formatter.label_emoji('Sigh', 'emoji', 'solid'), '😮‍💨')
@@ -148,16 +150,16 @@ function tests.test_label_emoji_uses_semantic_mapping()
 end
 
 function tests.test_label_emoji_uses_safe_fallback_symbols()
-  luaunit.assertEquals(formatter.label_emoji('Speech', 'fallback', 'strong'), '✦')
-  luaunit.assertEquals(formatter.label_emoji('Speech synthesizer', 'fallback', 'solid'), '✷')
-  luaunit.assertEquals(formatter.label_emoji('Sigh', 'fallback', 'solid'), '❋')
-  luaunit.assertEquals(formatter.label_emoji('Clicking', 'fallback', 'weak'), '⌘')
-  luaunit.assertEquals(formatter.label_emoji('Music', 'fallback', 'solid'), '♪')
+  luaunit.assertEquals(formatter.label_emoji('Speech', 'symbols', 'strong'), '✦')
+  luaunit.assertEquals(formatter.label_emoji('Speech synthesizer', 'symbols', 'solid'), '✷')
+  luaunit.assertEquals(formatter.label_emoji('Sigh', 'symbols', 'solid'), '❋')
+  luaunit.assertEquals(formatter.label_emoji('Clicking', 'symbols', 'weak'), '⌘')
+  luaunit.assertEquals(formatter.label_emoji('Music', 'symbols', 'solid'), '♪')
 end
 
 function tests.test_label_emoji_falls_back_to_bucket_icon_for_unknown_label()
   luaunit.assertEquals(formatter.label_emoji('Unknown texture', 'emoji', 'weak'), '💭')
-  luaunit.assertEquals(formatter.label_emoji('Unknown texture', 'fallback', 'weak'), '·')
+  luaunit.assertEquals(formatter.label_emoji('Unknown texture', 'symbols', 'weak'), '·')
 end
 
 function tests.test_main_script_passes_ctx_to_imgui_calls()
@@ -249,6 +251,18 @@ function tests.test_main_script_cleans_up_run_artifacts()
   luaunit.assertStrContains(source, 'report_run_cleanup.prune_stale(paths)')
   luaunit.assertStrContains(source, 'report_run_cleanup.clear_temp_audio(paths, state.run_artifacts)')
   luaunit.assertStrContains(source, 'cleanup_current_run()')
+end
+
+function tests.test_main_script_uses_auto_emoji_symbol_selector()
+  local handle = assert(io.open('reaper/PANNs Item Report.lua', 'rb'))
+  local source = handle:read('*a')
+  handle:close()
+
+  luaunit.assertStrContains(source, 'report_ui_state.load_icon_mode(reaper)')
+  luaunit.assertStrContains(source, 'report_ui_state.icon_mode_options()')
+  luaunit.assertStrContains(source, 'ImGui.TextDisabled(ctx, "Icons:")')
+  luaunit.assertEquals(source:find('Apple Color Emoji.ttc', 1, true), nil)
+  luaunit.assertEquals(source:find('CreateFontFromFile', 1, true), nil)
 end
 
 function tests.test_compact_report_uses_expanded_limits()

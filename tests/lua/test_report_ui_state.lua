@@ -3,6 +3,47 @@ local ui_state = require('report_ui_state')
 
 local tests = {}
 
+function tests.test_icon_mode_defaults_to_auto()
+  luaunit.assertEquals(ui_state.icon_mode(nil), 'auto')
+  luaunit.assertEquals(ui_state.icon_mode('weird'), 'auto')
+end
+
+function tests.test_icon_mode_accepts_symbols_alias()
+  luaunit.assertEquals(ui_state.icon_mode('symbols'), 'symbols')
+  luaunit.assertEquals(ui_state.icon_mode('fallback'), 'symbols')
+  luaunit.assertEquals(ui_state.icon_mode('emoji'), 'emoji')
+end
+
+function tests.test_load_icon_mode_reads_extstate()
+  local fake_reaper = {
+    GetExtState = function(_, _)
+      return 'symbols'
+    end,
+  }
+
+  luaunit.assertEquals(ui_state.load_icon_mode(fake_reaper), 'symbols')
+end
+
+function tests.test_save_icon_mode_persists_extstate()
+  local captured = {}
+  local fake_reaper = {
+    SetExtState = function(_, _, value, persist)
+      captured.value = value
+      captured.persist = persist
+    end,
+  }
+
+  local mode = ui_state.save_icon_mode(fake_reaper, 'fallback')
+
+  luaunit.assertEquals(mode, 'symbols')
+  luaunit.assertEquals(captured.value, 'symbols')
+  luaunit.assertEquals(captured.persist, true)
+end
+
+function tests.test_icon_mode_options_are_stable()
+  luaunit.assertEquals(table.concat(ui_state.icon_mode_options(), ','), 'auto,emoji,symbols')
+end
+
 function tests.test_focus_tag_switches_to_details()
   local state = {
     current_view = 'compact',

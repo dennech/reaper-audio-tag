@@ -51,9 +51,8 @@ local state = {
   notice = nil,
   run_artifacts = nil,
   ui = {
-    icon_mode = "fallback",
+    icon_mode = report_ui_state.load_icon_mode(reaper),
     base_font = nil,
-    emoji_font = nil,
     fonts_ready = false,
     last_poll_at_ms = 0,
     poll_interval_ms = 100,
@@ -173,21 +172,11 @@ end
 
 local function render_icon(icon_key, color, size)
   local icon = icon_text(icon_key)
-  if state.ui.icon_mode == "emoji" and push_font(state.ui.emoji_font, size or 16) then
-    ImGui.TextColored(ctx, color, icon)
-    ImGui.PopFont(ctx)
-  else
-    ImGui.TextColored(ctx, color, icon)
-  end
+  ImGui.TextColored(ctx, color, icon)
 end
 
 local function render_icon_value(icon, color, size)
-  if state.ui.icon_mode == "emoji" and push_font(state.ui.emoji_font, size or 16) then
-    ImGui.TextColored(ctx, color, icon)
-    ImGui.PopFont(ctx)
-  else
-    ImGui.TextColored(ctx, color, icon)
-  end
+  ImGui.TextColored(ctx, color, icon)
 end
 
 local function render_icon_label(icon_key, text, color)
@@ -216,27 +205,6 @@ local function ensure_fonts()
   if ok_base and base_font then
     pcall(ImGui.Attach, ctx, base_font)
     state.ui.base_font = base_font
-  end
-
-  local emoji_candidates = {}
-  if paths.os_name:match("^OSX") then
-    emoji_candidates[#emoji_candidates + 1] = "/System/Library/Fonts/Apple Color Emoji.ttc"
-  elseif paths.os_name:match("^Win") then
-    emoji_candidates[#emoji_candidates + 1] = "C:\\Windows\\Fonts\\seguiemj.ttf"
-  end
-
-  if ImGui.CreateFontFromFile then
-    for _, candidate in ipairs(emoji_candidates) do
-      if path_utils.exists(candidate) then
-        local ok_emoji, emoji_font = pcall(ImGui.CreateFontFromFile, candidate, 0)
-        if ok_emoji and emoji_font then
-          pcall(ImGui.Attach, ctx, emoji_font)
-          state.ui.emoji_font = emoji_font
-          state.ui.icon_mode = "emoji"
-          break
-        end
-      end
-    end
   end
 end
 
@@ -574,6 +542,15 @@ local function render_result()
   if state.current_view == "details" then
     ImGui.Separator(ctx)
     render_icon_label("details", "More", badge_color("accent"))
+    ImGui.SameLine(ctx)
+    ImGui.TextDisabled(ctx, "Icons:")
+    for _, mode in ipairs(report_ui_state.icon_mode_options()) do
+      ImGui.SameLine(ctx)
+      local label = mode == state.ui.icon_mode and "[" .. mode .. "]" or mode
+      if ImGui.Button(ctx, label) then
+        state.ui.icon_mode = report_ui_state.save_icon_mode(reaper, mode)
+      end
+    end
     if report_ui_state.focused_label(state.focused_tag) then
       ImGui.Spacing(ctx)
       ImGui.TextWrapped(ctx, "Focused tag: " .. report_ui_state.focused_label(state.focused_tag))

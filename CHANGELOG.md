@@ -13,3 +13,4 @@
 - Expanded the compact report to show more cues and tags, added a clearer `Another` rerun flow, and upgraded the fallback icon style for non-emoji ReaImGui setups.
 - Added safe cleanup for temporary export WAVs and finished job artifacts so the script no longer leaves stale app-owned files behind.
 - Documented rerun workflow, export diagnostics, and temporary-file cleanup behavior in the English and Russian docs.
+- Reworked emoji rendering around ReaImGui system-font fallback and added an `Icons: Auto / Emoji / Symbols` selector for compact report styling.

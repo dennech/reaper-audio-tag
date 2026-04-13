@@ -32,8 +32,9 @@
 
 ## В compact view видны symbols, а не emoji
 
-- Скрипт сначала пытается использовать доступный ReaImGui font stack для emoji-capable рендера.
-- Если это недоступно, он переключается на безопасные symbol icons, чтобы UI оставался читаемым.
+- Открой `More` и переключи `Icons` между `Auto`, `Emoji` и `Symbols`.
+- `Auto` использует системный font fallback ReaImGui для mixed emoji text.
+- `Symbols` принудительно включает безопасный symbol fallback, чтобы UI оставался читаемым даже на сборках без корректного emoji-rendering.
 - На качество анализа этот fallback не влияет.
 
 ## Хочу посмотреть export-диагностику без запуска модели

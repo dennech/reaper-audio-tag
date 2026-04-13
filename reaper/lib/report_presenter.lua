@@ -63,7 +63,7 @@ local LABEL_EMOJI_RULES = {
 }
 
 local function icon_set(icon_mode)
-  if icon_mode == "fallback" then
+  if icon_mode == "symbols" or icon_mode == "fallback" then
     return ICONS.fallback
   end
   return ICONS.emoji
@@ -120,7 +120,7 @@ function M.label_emoji(label, icon_mode, bucket)
   for _, rule in ipairs(LABEL_EMOJI_RULES) do
     for _, pattern in ipairs(rule.patterns) do
       if lowered:find(pattern, 1, true) then
-        if icon_mode == "fallback" then
+        if icon_mode == "symbols" or icon_mode == "fallback" then
           return rule.fallback
         end
         return rule.emoji
