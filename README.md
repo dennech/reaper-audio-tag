@@ -19,7 +19,8 @@ v1 intentionally stays narrow: macOS first, one selected audio item at a time, a
 4. Runs PANNs inference with `MPS -> CPU` fallback on Apple Silicon, or `CPU` on Intel Mac.
 5. Displays:
    - a compact summary with interesting findings
-   - up to `5` top cues and `6` top tags in the compact view
+   - up to `5` top cues in the compact view
+   - the full tag ranking as wrapped pill chips in the main report
    - backend and timing status
    - a detailed view with top predictions
    - an `Another` action so you can select a different item and rerun without closing the window
@@ -77,8 +78,10 @@ Troubleshooting:
 - The large model checkpoint is cached locally and is not committed to Git. In development checkouts it now prefers `.local-models/`, with a REAPER data-dir fallback for atypical environments.
 - The first release is intentionally conservative: reliability and fallback behavior are prioritized over maximum acceleration.
 - The report is clip-level tagging guidance, not event detection or timeline localization.
+- Export preparation now runs incrementally on the Lua side before Python inference starts, so opening the report stays responsive on longer selected items.
 - The script cleans up only its own temporary export WAVs, job files, and logs inside `Data/reaper-panns-item-report/{tmp,jobs,logs}`. It never deletes the original source audio or project media.
 - The compact report now uses bundled Noto Emoji PNG assets instead of system text emoji or custom sticker art, so tag chips stay consistent across REAPER/ReaImGui setups.
+- Tag chips use a stable bucket palette: `Strong` green, `Solid` purple, `Possible` yellow, and `Low` red.
 - The vendored emoji source lives under `reaper/assets/noto-emoji/`, and `scripts/generate_report_emoji_assets.py` regenerates the self-contained Lua bundles when those assets change.
 - The project vendors Noto Emoji image resources, not the font files. For the bundled PNG assets, keep the Apache 2.0 notice under `reaper/assets/noto-emoji/LICENSE-APACHE-2.0.txt` and the attribution note in `THIRD_PARTY_NOTICES.md`.
 - If the image path is unavailable in a specific session, the UI falls back to plain text labels only. Analysis behavior is unchanged.

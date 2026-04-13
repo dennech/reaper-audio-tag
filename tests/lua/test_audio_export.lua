@@ -37,6 +37,7 @@ local function with_fake_reaper(config, callback)
   local capture = {
     calls = {},
     temp_root = temp_root,
+    destroy_count = 0,
   }
 
   local item = {}
@@ -146,6 +147,7 @@ local function with_fake_reaper(config, callback)
       })
     end,
     DestroyAudioAccessor = function()
+      capture.destroy_count = capture.destroy_count + 1
     end,
     RecursiveCreateDirectory = function(path)
       os.execute('mkdir -p ' .. path_utils.sh_quote(path))
@@ -165,6 +167,77 @@ local function with_fake_reaper(config, callback)
   if not ok then
     error(err)
   end
+end
+
+function tests.test_async_export_session_steps_without_blocking_whole_range()
+  with_fake_reaper({
+    item_position = 12.5,
+    item_length = 0.2,
+    accessor_start = 12.5,
+    accessor_end = 12.7,
+    source_channels = 2,
+  }, function(capture, temp_root)
+    local target_path = path_utils.join(temp_root, 'async.wav')
+    local diagnostics_path = path_utils.join(temp_root, 'async.log')
+    local session, err = audio_export.begin_export_selected_item(target_path, {
+      diagnostics_path = diagnostics_path,
+    })
+
+    luaunit.assertEquals(err, nil)
+    luaunit.assertEquals(session ~= nil, true)
+
+    local first_step = audio_export.step_export(session, {
+      max_chunks = 1,
+      max_time_ms = 0,
+    })
+    luaunit.assertEquals(first_step.status, 'pending')
+    luaunit.assertEquals(first_step.frames_written, audio_export.CHUNK_FRAMES)
+    luaunit.assertEquals(capture.calls[1].numsamplesperchannel, audio_export.CHUNK_FRAMES)
+
+    local final_step = nil
+    while not session.completed do
+      final_step = audio_export.step_export(session, {
+        max_chunks = 1,
+        max_time_ms = 0,
+      })
+    end
+
+    luaunit.assertEquals(final_step.status, 'done')
+    luaunit.assertEquals(final_step.payload ~= nil, true)
+    luaunit.assertEquals(final_step.payload.item_metadata.frames_read > 0, true)
+    luaunit.assertEquals(#capture.calls >= 4, true)
+    luaunit.assertEquals(capture.destroy_count, 1)
+  end)
+end
+
+function tests.test_cancel_export_session_removes_partial_temp_audio_and_releases_accessor()
+  with_fake_reaper({
+    item_position = 9.0,
+    item_length = 0.2,
+    accessor_start = 9.0,
+    accessor_end = 9.2,
+    source_channels = 1,
+  }, function(capture, temp_root)
+    local target_path = path_utils.join(temp_root, 'cancel.wav')
+    local session, err = audio_export.begin_export_selected_item(target_path, {
+      diagnostics_path = path_utils.join(temp_root, 'cancel.log'),
+    })
+
+    luaunit.assertEquals(err, nil)
+    luaunit.assertEquals(session ~= nil, true)
+    audio_export.step_export(session, {
+      max_chunks = 1,
+      max_time_ms = 0,
+    })
+    luaunit.assertEquals(path_utils.exists(target_path), true)
+
+    audio_export.cancel_export(session)
+
+    luaunit.assertEquals(session.completed, true)
+    luaunit.assertEquals(session.cancelled, true)
+    luaunit.assertEquals(path_utils.exists(target_path), false)
+    luaunit.assertEquals(capture.destroy_count, 1)
+  end)
 end
 
 function tests.test_export_uses_project_domain_when_accessor_matches_project_time()

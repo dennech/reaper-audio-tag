@@ -12,6 +12,20 @@ local BUCKET_LABELS = {
   weak = "Low",
 }
 
+local function chip_palette_key(bucket)
+  local normalized = tostring(bucket or "weak"):lower()
+  if normalized == "strong" then
+    return "strong"
+  end
+  if normalized == "solid" then
+    return "solid"
+  end
+  if normalized == "possible" then
+    return "possible"
+  end
+  return "weak"
+end
+
 local function clone_predictions(predictions)
   local rows = {}
   for index, row in ipairs(predictions or {}) do
@@ -19,6 +33,7 @@ local function clone_predictions(predictions)
       label = row.label or "Unknown",
       score = tonumber(row.score) or 0,
       bucket = row.bucket or "weak",
+      palette_key = chip_palette_key(row.bucket),
       peak_score = tonumber(row.peak_score) or tonumber(row.score) or 0,
       support_count = tonumber(row.support_count) or 0,
       segment_count = tonumber(row.segment_count) or 0,
@@ -63,6 +78,10 @@ function M.decorate_chip_label(label, score)
   return string.format("%s %d%%", tostring(label or "Unknown"), percent)
 end
 
+function M.chip_palette_key(bucket)
+  return chip_palette_key(bucket)
+end
+
 function M.bucket_label(bucket)
   return BUCKET_LABELS[bucket] or "Tag"
 end
@@ -75,6 +94,7 @@ function M.view_model(result)
       label = row.label or row,
       score = row.score,
       bucket = row.bucket or "solid",
+      palette_key = chip_palette_key(row.bucket),
       headline = row.headline or "Interesting finding",
       peak_score = tonumber(row.peak_score) or tonumber(row.score) or 0,
       support_count = tonumber(row.support_count) or 0,
@@ -121,9 +141,6 @@ function M.compact_report(result)
 
   append(lines, "Tags")
   for index, prediction in ipairs(vm.predictions) do
-    if index > M.COMPACT_TAG_LIMIT then
-      break
-    end
     append(lines, string.format("  %d. %s", index, M.decorate_chip_label(prediction.label, prediction.score)))
   end
 
@@ -183,6 +200,20 @@ function M.loading_report(elapsed_ms)
     "Listening...",
     string.format("%.1f s", seconds),
   }, "\n")
+end
+
+function M.exporting_report(elapsed_ms, item_name)
+  local total_ms = tonumber(elapsed_ms) or 0
+  local seconds = math.floor(total_ms / 100) / 10
+  local lines = {
+    "PANNs Report",
+    "Preparing audio...",
+  }
+  if item_name and item_name ~= "" then
+    append(lines, tostring(item_name))
+  end
+  append(lines, string.format("%.1f s", seconds))
+  return table.concat(lines, "\n")
 end
 
 function M.error_report(result)

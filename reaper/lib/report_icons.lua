@@ -88,31 +88,22 @@ function M.ensure_loaded(ImGui, cache)
     return
   end
 
-  local missing = not cache.loaded
-  cache.available = false
-  for _, name in ipairs(icon_assets.ORDER or {}) do
-    local image = cache.images[name]
-    if M.is_valid_image(ImGui, image) then
-      cache.available = true
-    else
-      cache.images[name] = nil
-      missing = true
-    end
-  end
-
-  if cache.loaded and not missing then
+  if cache.loaded then
+    cache.available = next(cache.images) ~= nil
     return
   end
 
+  cache.available = false
   cache.loaded = true
   for _, name in ipairs(icon_assets.ORDER or {}) do
-    if not cache.images[name] then
+    if not M.is_valid_image(ImGui, cache.images[name]) then
+      cache.images[name] = nil
       local ok, image = pcall(ImGui.CreateImageFromMem, M.icon_png_data(name))
       if ok and M.is_valid_image(ImGui, image) then
         cache.images[name] = image
       end
     end
-    if M.is_valid_image(ImGui, cache.images[name]) then
+    if cache.images[name] then
       cache.available = true
     end
   end

@@ -30,6 +30,12 @@
 - Make sure the active take is audio, not MIDI.
 - If you already have a report open, keep the window open, select the new item, and click `Another`.
 
+## REAPER becomes sluggish when the report opens
+
+- Make sure you are on the latest version of the script and rerun the action.
+- The report now prepares exported audio incrementally. You should briefly see a `Preparing audio...` stage before runtime inference starts.
+- If responsiveness still drops, capture the current log and note whether the slowdown happens during `Preparing audio...` or during `Listening...`.
+
 ## The compact view does not show the colorful icons
 
 - The current build uses bundled Noto Emoji PNG assets instead of system emoji.

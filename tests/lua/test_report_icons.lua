@@ -98,12 +98,41 @@ function tests.test_ensure_loaded_recreates_invalid_handles()
     end,
   }
 
+  luaunit.assertEquals(report_icons.image(fake_imgui, cache, "speech"), nil)
   report_icons.ensure_loaded(fake_imgui, cache)
 
   luaunit.assertEquals(created > 0, true)
   luaunit.assertEquals(cache.loaded, true)
   luaunit.assertEquals(cache.available, true)
   luaunit.assertEquals(cache.images.speech.valid, true)
+end
+
+function tests.test_ensure_loaded_skips_full_reload_for_warm_cache()
+  local validate_calls = 0
+  local create_calls = 0
+  local cache = {
+    loaded = true,
+    available = true,
+    images = {
+      speech = { valid = true },
+    },
+  }
+  local fake_imgui = {
+    ValidatePtr = function(image, kind)
+      validate_calls = validate_calls + 1
+      return kind == "ImGui_Image*" and image.valid == true
+    end,
+    CreateImageFromMem = function()
+      create_calls = create_calls + 1
+      return { valid = true }
+    end,
+  }
+
+  report_icons.ensure_loaded(fake_imgui, cache)
+
+  luaunit.assertEquals(validate_calls, 0)
+  luaunit.assertEquals(create_calls, 0)
+  luaunit.assertEquals(cache.available, true)
 end
 
 return tests

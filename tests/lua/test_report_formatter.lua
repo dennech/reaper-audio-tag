@@ -110,6 +110,10 @@ function tests.test_loading_snapshot()
   snapshot.assert_snapshot(formatter.loading_report(1275), "loading.txt")
 end
 
+function tests.test_exporting_snapshot()
+  snapshot.assert_snapshot(formatter.exporting_report(1275, "23-1.wav"), "exporting.txt")
+end
+
 function tests.test_error_snapshot()
   snapshot.assert_snapshot(formatter.error_report(error_report), "error.txt")
 end
@@ -126,11 +130,11 @@ function tests.test_compact_report_contains_summary()
   luaunit.assertStrContains(report, "More")
 end
 
-function tests.test_compact_report_uses_expanded_limits()
+function tests.test_compact_report_lists_all_tags()
   local report = formatter.compact_report(sample_report)
-  luaunit.assertStrContains(report, "4. Gasp 11%")
   luaunit.assertStrContains(report, "6. Clicking 9%")
-  luaunit.assertEquals(report:find("7. Music 8%%", 1, false), nil)
+  luaunit.assertStrContains(report, "7. Music 8%")
+  luaunit.assertStrContains(report, "8. Unknown texture 4%")
 end
 
 function tests.test_label_icon_keys_use_semantic_mapping()
@@ -160,6 +164,14 @@ function tests.test_bucket_labels_are_plain_text()
   luaunit.assertEquals(formatter.bucket_label("solid"), "Solid")
   luaunit.assertEquals(formatter.bucket_label("possible"), "Possible")
   luaunit.assertEquals(formatter.bucket_label("weak"), "Low")
+end
+
+function tests.test_chip_palette_keys_follow_bucket_strength()
+  luaunit.assertEquals(formatter.chip_palette_key("strong"), "strong")
+  luaunit.assertEquals(formatter.chip_palette_key("solid"), "solid")
+  luaunit.assertEquals(formatter.chip_palette_key("possible"), "possible")
+  luaunit.assertEquals(formatter.chip_palette_key("weak"), "weak")
+  luaunit.assertEquals(formatter.chip_palette_key("whatever"), "weak")
 end
 
 function tests.test_main_script_passes_ctx_to_imgui_calls()
@@ -220,7 +232,7 @@ function tests.test_main_script_exposes_open_log_for_export_failures()
 
   luaunit.assertStrContains(source, "state.export_log_file")
   luaunit.assertStrContains(source, 'ImGui.Button(ctx, "Open log")')
-  luaunit.assertStrContains(source, "audio_export.export_selected_item(export_path, {")
+  luaunit.assertStrContains(source, "audio_export.begin_export_selected_item(export_path, {")
   luaunit.assertStrContains(source, "diagnostics_path = export_log_path")
 end
 
@@ -303,6 +315,61 @@ function tests.test_main_script_does_not_end_hidden_window_twice()
 
   luaunit.assertEquals(end_count, 1)
   luaunit.assertEquals(source:find("else%s+ImGui%.End%(ctx%)") ~= nil, false)
+end
+
+function tests.test_main_script_tracks_window_open_state_explicitly()
+  local handle = assert(io.open("reaper/PANNs Item Report.lua", "rb"))
+  local source = handle:read("*a")
+  handle:close()
+
+  luaunit.assertStrContains(source, "window_open = true")
+  luaunit.assertStrContains(source, 'ImGui.Begin(ctx, "PANNs Item Report", state.window_open, ImGui.WindowFlags_NoCollapse())')
+  luaunit.assertStrContains(source, "state.window_open = open")
+  luaunit.assertStrContains(source, "if state.window_open then")
+  luaunit.assertEquals(source:find('ImGui.Begin%(ctx, "PANNs Item Report", true,', 1, true), nil)
+end
+
+function tests.test_main_script_stops_live_job_after_result_and_keeps_log_artifacts()
+  local handle = assert(io.open("reaper/PANNs Item Report.lua", "rb"))
+  local source = handle:read("*a")
+  handle:close()
+
+  luaunit.assertStrContains(source, "set_result(polled.payload)")
+  luaunit.assertStrContains(source, "state.job = nil")
+  luaunit.assertStrContains(source, "state.run_artifacts.runtime_log_file")
+  luaunit.assertStrContains(source, "local function set_result(result)")
+  luaunit.assertStrContains(source, "local function current_view_model()")
+  luaunit.assertStrContains(source, 'ImGui.Button(ctx, "Open log")')
+end
+
+function tests.test_main_script_uses_async_export_session_before_runtime_job()
+  local handle = assert(io.open("reaper/PANNs Item Report.lua", "rb"))
+  local source = handle:read("*a")
+  handle:close()
+
+  luaunit.assertStrContains(source, "export_session = nil")
+  luaunit.assertStrContains(source, 'state.screen = "exporting"')
+  luaunit.assertStrContains(source, "audio_export.begin_export_selected_item")
+  luaunit.assertStrContains(source, "audio_export.step_export")
+  luaunit.assertStrContains(source, "audio_export.cancel_export")
+  luaunit.assertStrContains(source, "render_exporting()")
+  luaunit.assertEquals(source:find("audio_export.export_selected_item%(", 1, false), nil)
+end
+
+function tests.test_main_script_renders_full_tag_flow_with_bucket_palette()
+  local handle = assert(io.open("reaper/PANNs Item Report.lua", "rb"))
+  local source = handle:read("*a")
+  handle:close()
+
+  luaunit.assertStrContains(source, 'local function render_tag_pills(vm)')
+  luaunit.assertStrContains(source, "local spacing = 8")
+  luaunit.assertStrContains(source, "ordered_predictions(vm)")
+  luaunit.assertStrContains(source, 'render_tag_chip("tag", index, prediction')
+  luaunit.assertStrContains(source, 'report_presenter.chip_palette_key(prediction.bucket)')
+  luaunit.assertStrContains(source, "strong = { THEME.mint")
+  luaunit.assertStrContains(source, "solid = { THEME.lavender")
+  luaunit.assertStrContains(source, "possible = { THEME.lemon")
+  luaunit.assertStrContains(source, "weak = { 0xF8C0D0FF")
 end
 
 return tests

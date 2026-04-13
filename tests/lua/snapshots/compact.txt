@@ -14,4 +14,6 @@ Tags
   4. Gasp 11%
   5. Narration, monologue 11%
   6. Clicking 9%
+  7. Music 8%
+  8. Unknown texture 4%
 More

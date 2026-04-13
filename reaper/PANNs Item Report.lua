@@ -41,12 +41,15 @@ report_run_cleanup.prune_stale(paths)
 
 local ctx = ImGui.CreateContext("PANNs Item Report")
 local state = {
+  window_open = true,
   current_view = "compact",
   screen = "boot",
   result = nil,
+  export_session = nil,
   job = nil,
   last_error = nil,
   last_loading_ms = 0,
+  last_export_ms = 0,
   focused_tag = nil,
   export_log_file = nil,
   notice = nil,
@@ -56,6 +59,8 @@ local state = {
     fonts_ready = false,
     last_poll_at_ms = 0,
     poll_interval_ms = 100,
+    view_model = nil,
+    view_model_result = nil,
     icons = {
       loaded = false,
       images = {},
@@ -86,6 +91,7 @@ local THEME = {
   accent = 0xA394F9FF,
   pink = 0xF694B4FF,
   mint = 0xB9EEDCFF,
+  lemon = 0xFFEBA9FF,
   peach = 0xFFDFAFFF,
   lavender = 0xDDD2FFFF,
 }
@@ -235,6 +241,10 @@ local function open_log()
     reaper.ExecProcess("open " .. path_utils.sh_quote(state.export_log_file), -2)
     return
   end
+  if state.run_artifacts and state.run_artifacts.runtime_log_file and path_utils.exists(state.run_artifacts.runtime_log_file) then
+    reaper.ExecProcess("open " .. path_utils.sh_quote(state.run_artifacts.runtime_log_file), -2)
+    return
+  end
   if state.job and path_utils.exists(state.job.log_file) then
     reaper.ExecProcess("open " .. path_utils.sh_quote(state.job.log_file), -2)
     return
@@ -250,14 +260,50 @@ local function clear_temp_audio()
   end
 end
 
+local function cancel_export_session()
+  if state.export_session then
+    audio_export.cancel_export(state.export_session)
+    state.export_session = nil
+  end
+  state.last_export_ms = 0
+end
+
 local function cleanup_current_run()
+  cancel_export_session()
   if state.run_artifacts then
     report_run_cleanup.cleanup_run(paths, state.run_artifacts)
     state.run_artifacts = nil
   end
+  state.job = nil
+  state.ui.last_poll_at_ms = 0
+end
+
+local function invalidate_view_model()
+  state.ui.view_model = nil
+  state.ui.view_model_result = nil
+end
+
+local function set_result(result)
+  state.result = result
+  invalidate_view_model()
+end
+
+local function current_view_model()
+  if not state.result then
+    invalidate_view_model()
+    return nil
+  end
+  if state.ui.view_model_result ~= state.result then
+    state.ui.view_model = report_presenter.view_model(state.result)
+    state.ui.view_model_result = state.result
+  end
+  return state.ui.view_model
 end
 
 local function status_chip()
+  if state.screen == "exporting" then
+    return "Preparing", "accent", "loading"
+  end
   if state.screen == "loading" then
     return "Listening", "warning", "loading"
   end
@@ -295,7 +341,6 @@ local function start_analysis(options)
   local preserve_result_if_selection_invalid = options.preserve_result_if_selection_invalid == true
   local previous_result = state.result
   local previous_screen = state.screen
-  local previous_job = state.job
   local previous_export_log_file = state.export_log_file
   local previous_run_artifacts = state.run_artifacts
   local previous_view = state.current_view
@@ -305,14 +350,13 @@ local function start_analysis(options)
   local export_id = path_utils.sanitize_job_id(reaper.genGuid(""))
   local export_path = path_utils.join(paths.tmp_dir, "selected-item-" .. export_id .. ".wav")
   local export_log_path = path_utils.join(paths.logs_dir, "export-" .. export_id .. ".log")
-  local export_payload, err, export_metadata = audio_export.export_selected_item(export_path, {
+  local export_session, err, export_metadata = audio_export.begin_export_selected_item(export_path, {
     diagnostics_path = export_log_path,
   })
-  if not export_payload then
+  if not export_session then
     if preserve_result_if_selection_invalid and export_metadata and export_metadata.error_kind == "selection" and previous_result then
       state.screen = previous_screen
       state.result = previous_result
-      state.job = previous_job
       state.export_log_file = previous_export_log_file
       state.run_artifacts = previous_run_artifacts
       state.current_view = previous_view
@@ -328,7 +372,7 @@ local function start_analysis(options)
     state.screen = "error"
     state.current_view = "compact"
     state.focused_tag = nil
-    state.result = {
+    set_result({
       status = "error",
       stage = "export",
       backend = nil,
@@ -341,35 +385,23 @@ local function start_analysis(options)
       model_status = { name = "Cnn14", source = "managed-runtime" },
       item = export_metadata or {},
       error = { code = "export_failed", message = err },
-    }
-    return
-  end
-
-  local job, job_err = runtime_client.start_job(paths, export_payload, {
-    requested_backend = "auto",
-  })
-  if not job then
-    cleanup_current_run()
-    state.run_artifacts = report_run_cleanup.new_artifacts(export_path, export_log_path, nil)
-    clear_temp_audio()
-    state.export_log_file = export_log_path
-    state.job = nil
-    state.screen = "setup"
-    state.last_error = job_err
+    })
     return
   end
 
   cleanup_current_run()
-  state.run_artifacts = report_run_cleanup.new_artifacts(export_path, export_log_path, job)
+  state.run_artifacts = report_run_cleanup.new_artifacts(export_path, export_log_path, nil)
   state.export_log_file = export_log_path
-  state.job = job
-  state.result = nil
+  state.export_session = export_session
+  state.job = nil
+  set_result(nil)
   state.last_error = nil
   state.last_loading_ms = 0
+  state.last_export_ms = 0
   state.current_view = "compact"
   state.focused_tag = nil
   state.ui.last_poll_at_ms = 0
-  state.screen = "loading"
+  state.screen = "exporting"
 end
 
 local function ensure_started()
@@ -418,6 +450,82 @@ local function render_setup()
   end
 end
 
+local function finalize_export_success(export_payload)
+  local export_path = state.run_artifacts and state.run_artifacts.export_path or export_payload.temp_audio_path
+  local export_log_path = state.export_log_file
+  local job, job_err = runtime_client.start_job(paths, export_payload, {
+    requested_backend = "auto",
+  })
+  state.export_session = nil
+  if not job then
+    clear_temp_audio()
+    state.job = nil
+    state.screen = "setup"
+    state.last_error = job_err
+    return
+  end
+
+  state.run_artifacts = report_run_cleanup.new_artifacts(export_path, export_log_path, job)
+  state.job = job
+  state.last_loading_ms = 0
+  state.ui.last_poll_at_ms = 0
+  state.screen = "loading"
+end
+
+local function render_exporting()
+  if not state.export_session then
+    state.screen = "boot"
+    return
+  end
+
+  local stepped = audio_export.step_export(state.export_session, {
+    max_chunks = 32,
+    max_time_ms = 8,
+  })
+  state.last_export_ms = stepped.elapsed_ms or 0
+
+  if stepped.status == "error" then
+    state.export_session = nil
+    state.screen = "error"
+    state.current_view = "compact"
+    state.focused_tag = nil
+    set_result({
+      status = "error",
+      stage = "export",
+      backend = nil,
+      attempted_backends = {},
+      timing_ms = { preprocess = 0, inference = 0, total = 0 },
+      summary = "No analysis summary is available.",
+      predictions = {},
+      highlights = {},
+      warnings = {},
+      model_status = { name = "Cnn14", source = "managed-runtime" },
+      item = stepped.diagnostics or {},
+      error = { code = "export_failed", message = stepped.error or "Preparing the selected audio failed." },
+    })
+  elseif stepped.status == "done" then
+    finalize_export_success(stepped.payload)
+  end
+
+  local item_name = state.export_session and state.export_session.item_name
+  local exporting_text = report_presenter.exporting_report(state.last_export_ms, item_name)
+  ImGui.TextWrapped(ctx, exporting_text)
+  ImGui.Spacing(ctx)
+
+  local progress = stepped.progress or 0
+  local item_length = state.export_session and tonumber(state.export_session.item_length) or 0
+  local prepared_seconds = item_length * progress
+  local overlay = string.format("Preparing audio... %.0f%%", progress * 100)
+  if item_length > 0 then
+    overlay = string.format("Preparing audio... %.1f / %.1f s", prepared_seconds, item_length)
+  end
+  ImGui.ProgressBar(ctx, progress, -1, 0, overlay)
+  if state.export_session and state.last_export_ms > 500 then
+    ImGui.Spacing(ctx)
+    ImGui.TextDisabled(ctx, "Chunking the selected item without blocking REAPER...")
+  end
+end
+
 local function render_loading()
   local now_ms = math.floor(reaper.time_precise() * 1000)
   if state.job then
@@ -425,8 +533,9 @@ local function render_loading()
       local polled = runtime_client.poll_job(state.job)
       state.ui.last_poll_at_ms = now_ms
       if polled.done then
-        state.result = polled.payload
+        set_result(polled.payload)
         clear_temp_audio()
+        state.job = nil
         state.screen = polled.payload.status == "ok" and "result" or "error"
       else
         state.last_loading_ms = polled.elapsed_ms
@@ -457,9 +566,11 @@ end
 
 local function chip_palette(kind, hovered, active)
   local palette = {
+    strong = { THEME.mint, 0xA9E9D3FF, 0x93DEC5FF },
+    solid = { THEME.lavender, 0xD2C6FFFF, 0xC6B6FFFF },
+    possible = { THEME.lemon, 0xFFE49BFF, 0xFFD77FFF },
+    weak = { 0xF8C0D0FF, 0xF3AFC4FF, 0xEA9AB4FF },
     accent = { THEME.button, THEME.button_hover, THEME.button_active },
-    success = { THEME.mint, 0xA9E9D3FF, 0x93DEC5FF },
-    sparkle = { THEME.lavender, 0xD2C6FFFF, 0xC6B6FFFF },
   }
   local colors = palette[kind] or palette.accent
   if active then
@@ -471,19 +582,35 @@ local function chip_palette(kind, hovered, active)
   return colors[1]
 end
 
-local function render_tag_chip(group_id, index, prediction, kind)
+local function chip_metrics(prediction, variant)
   local label = report_presenter.decorate_chip_label(prediction.label, prediction.score)
   local icon_key = report_presenter.label_icon_key(prediction.label, prediction.bucket)
   local text_w, text_h = ImGui.CalcTextSize(ctx, label)
-  local icon_size = image_for(icon_key) and 18 or 0
-  local pad_x = 12
-  local pad_y = 8
-  local gap = icon_size > 0 and 8 or 0
-  local width = math.max(140, text_w + (pad_x * 2) + icon_size + gap)
+  local icon_size = image_for(icon_key) and (variant == "flow" and 16 or 18) or 0
+  local pad_x = variant == "flow" and 10 or 12
+  local pad_y = variant == "flow" and 6 or 8
+  local gap = icon_size > 0 and (variant == "flow" and 6 or 8) or 0
+  local min_width = variant == "flow" and 0 or 140
+  local width = math.max(min_width, text_w + (pad_x * 2) + icon_size + gap)
   local height = math.max(text_h, icon_size) + (pad_y * 2)
 
+  return {
+    label = label,
+    icon_key = icon_key,
+    text_h = text_h,
+    icon_size = icon_size,
+    pad_x = pad_x,
+    pad_y = pad_y,
+    width = width,
+    height = height,
+  }
+end
+
+local function render_tag_chip(group_id, index, prediction, kind, variant)
+  local metrics = chip_metrics(prediction, variant)
+
   ImGui.PushID(ctx, string.format("%s-%d-%s", group_id, index, prediction.label))
-  local pressed = ImGui.InvisibleButton(ctx, "##chip", width, height)
+  local pressed = ImGui.InvisibleButton(ctx, "##chip", metrics.width, metrics.height)
   local hovered = ImGui.IsItemHovered(ctx)
   local active = ImGui.IsItemActive(ctx)
   local min_x, min_y = ImGui.GetItemRectMin(ctx)
@@ -491,21 +618,37 @@ local function render_tag_chip(group_id, index, prediction, kind)
   local draw_list = ImGui.GetWindowDrawList(ctx)
   local bg = chip_palette(kind, hovered, active)
 
-  ImGui.DrawList_AddRectFilled(draw_list, min_x, min_y, max_x, max_y, bg, height / 2)
-  local text_x = min_x + pad_x
-  local text_y = min_y + math.max(0, (height - text_h) / 2)
-  ImGui.DrawList_AddText(draw_list, text_x, text_y, THEME.text, label)
-  if icon_size > 0 then
-    local icon_x = max_x - pad_x - icon_size
-    local icon_y = min_y + math.max(0, (height - icon_size) / 2)
-    draw_image_icon(draw_list, icon_key, icon_x, icon_y, icon_size)
+  ImGui.DrawList_AddRectFilled(draw_list, min_x, min_y, max_x, max_y, bg, metrics.height / 2)
+  local text_x = min_x + metrics.pad_x
+  local text_y = min_y + math.max(0, (metrics.height - metrics.text_h) / 2)
+  ImGui.DrawList_AddText(draw_list, text_x, text_y, THEME.text, metrics.label)
+  if metrics.icon_size > 0 then
+    local icon_x = max_x - metrics.pad_x - metrics.icon_size
+    local icon_y = min_y + math.max(0, (metrics.height - metrics.icon_size) / 2)
+    draw_image_icon(draw_list, metrics.icon_key, icon_x, icon_y, metrics.icon_size)
   end
   ImGui.PopID(ctx)
-  return pressed
+  return pressed, metrics
 end
 
 local function ordered_predictions(vm)
   return report_ui_state.ordered_predictions(vm.predictions, state.focused_tag)
+end
+
+local function flow_available_width()
+  if ImGui.GetContentRegionAvail then
+    local ok, width = pcall(ImGui.GetContentRegionAvail, ctx)
+    if ok and type(width) == "number" and width > 0 then
+      return width
+    end
+  end
+  if ImGui.GetWindowWidth then
+    local ok, width = pcall(ImGui.GetWindowWidth, ctx)
+    if ok and type(width) == "number" and width > 0 then
+      return math.max(180, width - 48)
+    end
+  end
+  return 480
 end
 
 local function render_prediction_rows(vm, limit, show_support)
@@ -541,7 +684,7 @@ local function render_highlight_pills(vm)
     if index > report_presenter.COMPACT_HIGHLIGHT_LIMIT then
       break
     end
-    if render_tag_chip("highlight", index, row, index == 1 and "success" or "sparkle") then
+    if render_tag_chip("highlight", index, row, row.palette_key or report_presenter.chip_palette_key(row.bucket), "feature") then
       report_ui_state.focus_tag(state, row.label)
     end
   end
@@ -549,18 +692,28 @@ end
 
 local function render_tag_pills(vm)
   render_image_label(report_presenter.section_icon_key("tags"), "Tags", badge_color("accent"), 16)
-  for index, prediction in ipairs(vm.predictions) do
-    if index > report_presenter.COMPACT_TAG_LIMIT then
-      break
+  local spacing = 8
+  local line_width = 0
+  local available_width = flow_available_width()
+  local ordered = ordered_predictions(vm)
+
+  for index, prediction in ipairs(ordered) do
+    local metrics = chip_metrics(prediction, "flow")
+    if line_width > 0 and (line_width + spacing + metrics.width) <= available_width then
+      ImGui.SameLine(ctx, 0, spacing)
+      line_width = line_width + spacing + metrics.width
+    else
+      line_width = metrics.width
     end
-    if render_tag_chip("tag", index, prediction, "accent") then
+
+    if render_tag_chip("tag", index, prediction, prediction.palette_key or report_presenter.chip_palette_key(prediction.bucket), "flow") then
       report_ui_state.focus_tag(state, prediction.label)
     end
   end
 end
 
 local function render_result()
-  local vm = report_presenter.view_model(state.result)
+  local vm = current_view_model()
 
   ImGui.TextWrapped(ctx, vm.summary)
   ImGui.Spacing(ctx)
@@ -591,7 +744,8 @@ local function render_result()
     start_analysis({ preserve_result_if_selection_invalid = true })
     return
   end
-  if state.job and path_utils.exists(state.job.log_file) then
+  if (state.run_artifacts and state.run_artifacts.runtime_log_file and path_utils.exists(state.run_artifacts.runtime_log_file))
+    or (state.job and path_utils.exists(state.job.log_file)) then
     ImGui.SameLine(ctx)
     if ImGui.Button(ctx, "Log") then
       open_log()
@@ -668,7 +822,9 @@ local function render_error()
   if ImGui.Button(ctx, "Bootstrap") then
     runtime_client.open_bootstrap(paths)
   end
-  if (state.job and path_utils.exists(state.job.log_file)) or (state.export_log_file and path_utils.exists(state.export_log_file)) then
+  if (state.run_artifacts and state.run_artifacts.runtime_log_file and path_utils.exists(state.run_artifacts.runtime_log_file))
+    or (state.job and path_utils.exists(state.job.log_file))
+    or (state.export_log_file and path_utils.exists(state.export_log_file)) then
     ImGui.SameLine(ctx)
     if ImGui.Button(ctx, "Open log") then
       open_log()
@@ -681,13 +837,16 @@ local function loop()
   ensure_started()
   ImGui.SetNextWindowSize(ctx, 560, 420, ImGui.Cond_FirstUseEver())
   local color_count, var_count = push_theme()
-  local visible, open = ImGui.Begin(ctx, "PANNs Item Report", true, ImGui.WindowFlags_NoCollapse())
+  local visible, open = ImGui.Begin(ctx, "PANNs Item Report", state.window_open, ImGui.WindowFlags_NoCollapse())
+  state.window_open = open
   if visible then
     local pushed_base_font = push_font(state.ui.base_font, 15)
     local ok, err = xpcall(function()
       render_header()
       if state.screen == "setup" then
         render_setup()
+      elseif state.screen == "exporting" then
+        render_exporting()
       elseif state.screen == "loading" then
         render_loading()
       elseif state.screen == "result" then
@@ -704,9 +863,10 @@ local function loop()
     ImGui.End(ctx)
     pop_theme(color_count, var_count)
     if not ok then
+      cancel_export_session()
       state.job = nil
       state.screen = "error"
-      state.result = internal_ui_error_result("The report window hit an internal UI error. Reopen the report if the problem persists.\n\n" .. tostring(err))
+      set_result(internal_ui_error_result("The report window hit an internal UI error. Reopen the report if the problem persists.\n\n" .. tostring(err)))
     end
   end
 
@@ -714,7 +874,7 @@ local function loop()
     pop_theme(color_count, var_count)
   end
 
-  if open then
+  if state.window_open then
     reaper.defer(loop)
   else
     cleanup_current_run()

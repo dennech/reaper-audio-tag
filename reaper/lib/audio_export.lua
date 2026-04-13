@@ -7,6 +7,18 @@ local PCM_BYTES = 2
 local CHUNK_FRAMES = 2048
 local RANGE_EPSILON = 0.01
 
+M.TARGET_SAMPLE_RATE = TARGET_SAMPLE_RATE
+M.CHUNK_FRAMES = CHUNK_FRAMES
+M.DEFAULT_STEP_MAX_CHUNKS = 24
+M.DEFAULT_STEP_MAX_TIME_MS = 6
+
+local function now_seconds()
+  if reaper and reaper.time_precise then
+    return reaper.time_precise()
+  end
+  return os.clock()
+end
+
 local function round_number(value)
   return math.floor((tonumber(value) or 0) * 1000000 + 0.5) / 1000000
 end
@@ -124,22 +136,6 @@ local function write_diagnostics(path, diagnostics)
   end
   path_utils.ensure_dir(path_utils.dirname(path))
   path_utils.write_file(path, diagnostics_lines(diagnostics))
-end
-
-local function finalize_error(handle, accessor, target_path, diagnostics_path, diagnostics, message)
-  if handle then
-    handle:close()
-  end
-  if accessor and reaper.DestroyAudioAccessor then
-    reaper.DestroyAudioAccessor(accessor)
-  end
-  if target_path then
-    os.remove(target_path)
-  end
-  diagnostics.status = "error"
-  diagnostics.error = message
-  write_diagnostics(diagnostics_path, diagnostics)
-  return nil, message, diagnostics
 end
 
 local function build_domain_candidates(context)
@@ -374,7 +370,105 @@ local function chosen_read_mode(candidate, selection_method, context)
   return "direct"
 end
 
-function M.export_selected_item(target_path, options)
+local function close_session_handles(session)
+  if session.handle then
+    session.handle:close()
+    session.handle = nil
+  end
+  if session.accessor and reaper.DestroyAudioAccessor then
+    reaper.DestroyAudioAccessor(session.accessor)
+    session.accessor = nil
+  end
+end
+
+local function build_payload(session)
+  local diagnostics = session.diagnostics
+  return {
+    temp_audio_path = session.target_path,
+    item_metadata = {
+      item_name = session.item_name,
+      item_position = session.item_position,
+      item_length = session.item_length,
+      selected_end = session.selected_end,
+      requested_start = session.item_position,
+      requested_end = session.selected_end,
+      sample_rate = TARGET_SAMPLE_RATE,
+      source_channels = session.source_channels,
+      accessor_start = session.accessor_start,
+      accessor_end = session.accessor_end,
+      accessor_range_length = diagnostics.accessor_range_length,
+      accessor_time_domain = diagnostics.accessor_time_domain,
+      take_start_offset = session.take_start_offset,
+      take_playrate = session.take_playrate,
+      loop_source = session.loop_source,
+      source_consumed_length = session.source_consumed_length,
+      accessor_state_changed = diagnostics.accessor_state_changed,
+      read_strategy = diagnostics.read_strategy,
+      read_mode = diagnostics.read_mode,
+      range_mismatch = diagnostics.range_mismatch,
+      range_clamped = diagnostics.range_clamped,
+      probe_candidates_tried = diagnostics.probe_candidates_tried,
+      probe_domain_selected = diagnostics.probe_domain_selected,
+      probe_frames_read = diagnostics.probe_frames_read,
+      frames_read = diagnostics.frames_read,
+      frames_silent = diagnostics.frames_silent,
+      chunks_read = diagnostics.chunks_read,
+      chunks_silent = diagnostics.chunks_silent,
+    },
+  }
+end
+
+local function finalize_session_error(session, message)
+  close_session_handles(session)
+  if session.target_path then
+    os.remove(session.target_path)
+  end
+  session.diagnostics.status = "error"
+  session.diagnostics.error = message
+  write_diagnostics(session.diagnostics_path, session.diagnostics)
+  session.completed = true
+  session.error = message
+  return nil, message, session.diagnostics
+end
+
+function M.finish_export(session)
+  if not session then
+    return nil, "No export session is active."
+  end
+  if session.completed then
+    if session.payload then
+      return session.payload, nil, session.diagnostics
+    end
+    return nil, session.error, session.diagnostics
+  end
+
+  close_session_handles(session)
+  session.diagnostics.range_clamped = session.diagnostics.frames_silent > 0
+  if session.diagnostics.frames_read <= 0 then
+    return finalize_session_error(session, "Could not read audio data from the selected take range.")
+  end
+
+  session.diagnostics.status = "ok"
+  write_diagnostics(session.diagnostics_path, session.diagnostics)
+  session.payload = build_payload(session)
+  session.completed = true
+  return session.payload, nil, session.diagnostics
+end
+
+function M.cancel_export(session)
+  if not session or session.completed then
+    return
+  end
+  close_session_handles(session)
+  if session.target_path then
+    os.remove(session.target_path)
+  end
+  session.completed = true
+  session.cancelled = true
+  session.error = "Export cancelled."
+end
+
+function M.begin_export_selected_item(target_path, options)
   options = options or {}
 
   local item, take_or_error = active_audio_take()
@@ -458,8 +552,34 @@ function M.export_selected_item(target_path, options)
   local candidates = build_domain_candidates(context)
   local chosen_candidate, selection_method = resolve_domain(accessor, candidates, context, total_frames, buffer, diagnostics)
 
+  local session = {
+    target_path = target_path,
+    diagnostics_path = options.diagnostics_path,
+    diagnostics = diagnostics,
+    accessor = accessor,
+    buffer = buffer,
+    context = context,
+    chosen_candidate = chosen_candidate,
+    total_frames = total_frames,
+    frames_written = 0,
+    chunk_start_project = item_position,
+    started_at = now_seconds(),
+    completed = false,
+    item_name = item_name,
+    item_position = item_position,
+    item_length = item_length,
+    selected_end = selected_end,
+    source_channels = source_channels,
+    accessor_start = accessor_start,
+    accessor_end = accessor_end,
+    take_start_offset = take_start_offset,
+    take_playrate = take_playrate,
+    loop_source = loop_source,
+    source_consumed_length = source_consumed_length,
+  }
+
   if not chosen_candidate then
-    return finalize_error(nil, accessor, target_path, options.diagnostics_path, diagnostics, "Could not resolve an audio accessor time domain for the selected take.")
+    return finalize_session_error(session, "Could not resolve an audio accessor time domain for the selected take.")
   end
 
   diagnostics.accessor_time_domain = chosen_candidate.name
@@ -471,72 +591,111 @@ function M.export_selected_item(target_path, options)
   path_utils.ensure_dir(path_utils.dirname(target_path))
   local handle, err = io.open(target_path, "wb")
   if not handle then
-    return finalize_error(handle, accessor, target_path, options.diagnostics_path, diagnostics, "Could not open the temporary WAV file: " .. tostring(err))
+    session.handle = handle
+    return finalize_session_error(session, "Could not open the temporary WAV file: " .. tostring(err))
   end
 
+  session.handle = handle
   write_wav_header(handle, TARGET_SAMPLE_RATE, 1, total_frames)
+  return session, nil, diagnostics
+end
 
-  local frames_written = 0
-  local chunk_start_project = item_position
-  while frames_written < total_frames do
-    local frames_to_fetch = math.min(CHUNK_FRAMES, total_frames - frames_written)
-    local read_result = read_accessor_chunk(
-      accessor,
-      chosen_candidate,
-      context,
-      chunk_start_project,
-      frames_to_fetch,
-      buffer,
-      diagnostics.read_mode == "clamped"
-    )
-    append_audio_chunk(handle, buffer, context, diagnostics, frames_to_fetch, read_result)
-    frames_written = frames_written + frames_to_fetch
-    chunk_start_project = chunk_start_project + (frames_to_fetch / TARGET_SAMPLE_RATE)
+function M.step_export(session, options)
+  options = options or {}
+  if not session then
+    return { status = "error", error = "No export session is active." }
+  end
+  if session.completed then
+    if session.payload then
+      return {
+        status = "done",
+        payload = session.payload,
+        diagnostics = session.diagnostics,
+        elapsed_ms = math.floor((now_seconds() - session.started_at) * 1000),
+        progress = 1,
+      }
+    end
+    return {
+      status = session.cancelled and "cancelled" or "error",
+      error = session.error,
+      diagnostics = session.diagnostics,
+      elapsed_ms = math.floor((now_seconds() - session.started_at) * 1000),
+      progress = math.min(1, session.frames_written / math.max(1, session.total_frames)),
+    }
   end
 
-  diagnostics.range_clamped = diagnostics.frames_silent > 0
-  diagnostics.status = "ok"
-  write_diagnostics(options.diagnostics_path, diagnostics)
-  handle:close()
-  reaper.DestroyAudioAccessor(accessor)
+  local max_chunks = tonumber(options.max_chunks) or M.DEFAULT_STEP_MAX_CHUNKS
+  local max_time_ms = tonumber(options.max_time_ms) or M.DEFAULT_STEP_MAX_TIME_MS
+  local started_at = now_seconds()
+  local chunks_processed = 0
 
-  if diagnostics.frames_read <= 0 then
-    return finalize_error(nil, nil, target_path, options.diagnostics_path, diagnostics, "Could not read audio data from the selected take range.")
+  while session.frames_written < session.total_frames do
+    local frames_to_fetch = math.min(CHUNK_FRAMES, session.total_frames - session.frames_written)
+    local read_result = read_accessor_chunk(
+      session.accessor,
+      session.chosen_candidate,
+      session.context,
+      session.chunk_start_project,
+      frames_to_fetch,
+      session.buffer,
+      session.diagnostics.read_mode == "clamped"
+    )
+    append_audio_chunk(session.handle, session.buffer, session.context, session.diagnostics, frames_to_fetch, read_result)
+    session.frames_written = session.frames_written + frames_to_fetch
+    session.chunk_start_project = session.chunk_start_project + (frames_to_fetch / TARGET_SAMPLE_RATE)
+    chunks_processed = chunks_processed + 1
+
+    if chunks_processed >= max_chunks then
+      break
+    end
+    if max_time_ms > 0 and ((now_seconds() - started_at) * 1000) >= max_time_ms then
+      break
+    end
+  end
+
+  if session.frames_written >= session.total_frames then
+    local payload, err, diagnostics = M.finish_export(session)
+    return {
+      status = payload and "done" or "error",
+      payload = payload,
+      error = err,
+      diagnostics = diagnostics,
+      elapsed_ms = math.floor((now_seconds() - session.started_at) * 1000),
+      progress = 1,
+      chunks_processed = chunks_processed,
+      frames_written = session.frames_written,
+      total_frames = session.total_frames,
+    }
   end
 
   return {
-    temp_audio_path = target_path,
-    item_metadata = {
-      item_name = item_name,
-      item_position = item_position,
-      item_length = item_length,
-      selected_end = selected_end,
-      requested_start = item_position,
-      requested_end = selected_end,
-      sample_rate = TARGET_SAMPLE_RATE,
-      source_channels = source_channels,
-      accessor_start = accessor_start,
-      accessor_end = accessor_end,
-      accessor_range_length = diagnostics.accessor_range_length,
-      accessor_time_domain = diagnostics.accessor_time_domain,
-      take_start_offset = take_start_offset,
-      take_playrate = take_playrate,
-      loop_source = loop_source,
-      source_consumed_length = source_consumed_length,
-      accessor_state_changed = diagnostics.accessor_state_changed,
-      read_strategy = diagnostics.read_strategy,
-      read_mode = diagnostics.read_mode,
-      range_mismatch = diagnostics.range_mismatch,
-      range_clamped = diagnostics.range_clamped,
-      probe_candidates_tried = diagnostics.probe_candidates_tried,
-      probe_domain_selected = diagnostics.probe_domain_selected,
-      probe_frames_read = diagnostics.probe_frames_read,
-      frames_read = diagnostics.frames_read,
-      frames_silent = diagnostics.frames_silent,
-      chunks_read = diagnostics.chunks_read,
-      chunks_silent = diagnostics.chunks_silent,
-    },
+    status = "pending",
+    diagnostics = session.diagnostics,
+    elapsed_ms = math.floor((now_seconds() - session.started_at) * 1000),
+    progress = math.min(0.999, session.frames_written / math.max(1, session.total_frames)),
+    chunks_processed = chunks_processed,
+    frames_written = session.frames_written,
+    total_frames = session.total_frames,
   }
+end
+
+function M.export_selected_item(target_path, options)
+  local session, err, diagnostics = M.begin_export_selected_item(target_path, options)
+  if not session then
+    return nil, err, diagnostics
+  end
+
+  while not session.completed do
+    local step = M.step_export(session, {
+      max_chunks = math.huge,
+      max_time_ms = 0,
+    })
+    if step.status == "error" then
+      return nil, step.error, step.diagnostics
+    end
+  end
+
+  return session.payload, nil, session.diagnostics
 end
 
 return M
