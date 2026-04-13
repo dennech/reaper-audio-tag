@@ -13,7 +13,7 @@
    - downloads the `Cnn14_mAP=0.431.pth` checkpoint
    - validates the checkpoint with a strong checksum before enabling the runtime
    - writes the runtime config into the REAPER user data directory
-7. In REAPER, import `reaper/PANNs Item Report.lua` into the Actions list.
+7. In REAPER, import `reaper/REAPER Audio Tag.lua` into the Actions list.
 8. Select one audio item and run the script.
 9. After a successful run you can keep the window open, select a different item, and click `Another`.
 

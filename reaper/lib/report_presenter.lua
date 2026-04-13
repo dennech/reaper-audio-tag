@@ -108,7 +108,7 @@ function M.view_model(result)
   local total_ms = timing.total or timing.total_ms or timing.inference or 0
 
   return {
-    title = "PANNs Report",
+    title = "REAPER Audio Tag",
     status = result.status or "unknown",
     stage = result.stage or "runtime",
     summary = result.summary or "No cues yet.",
@@ -198,7 +198,7 @@ function M.loading_report(elapsed_ms)
   local total_ms = tonumber(elapsed_ms) or 0
   local seconds = math.floor(total_ms / 100) / 10
   return table.concat({
-    "PANNs Report",
+    "REAPER Audio Tag",
     "Listening...",
     string.format("%.1f s", seconds),
   }, "\n")
@@ -208,7 +208,7 @@ function M.exporting_report(elapsed_ms, item_name)
   local total_ms = tonumber(elapsed_ms) or 0
   local seconds = math.floor(total_ms / 100) / 10
   local lines = {
-    "PANNs Report",
+    "REAPER Audio Tag",
     "Preparing audio...",
   }
   if item_name and item_name ~= "" then
@@ -224,7 +224,7 @@ function M.error_report(result)
   local message = error_object and error_object.message or "No details available."
   local stage = result and result.stage or "runtime"
   local lines = {
-    "PANNs Report",
+    "REAPER Audio Tag",
     "Try again",
     tostring(code),
     message,

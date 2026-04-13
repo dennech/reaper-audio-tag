@@ -46,7 +46,7 @@
 
 ## Хочу посмотреть export-диагностику без запуска модели
 
-- Запусти `reaper/PANNs Item Report - Debug Export.lua`.
+- Запусти `reaper/REAPER Audio Tag - Debug Export.lua`.
 - Он экспортирует выбранный take range, пишет diagnostics log и останавливается до шага Python runtime.
 
 ## Боюсь, что временные файлы захламляют систему

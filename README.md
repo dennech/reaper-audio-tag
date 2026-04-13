@@ -1,6 +1,6 @@
-# REAPER PANNs Item Report
+# REAPER Audio Tag
 
-`REAPER PANNs Item Report` is a REAPER action for quick clip-level audio inspection. It exports the currently selected audio item, downmixes it to mono, resamples it to `32 kHz`, runs local `PANNs Cnn14` tagging through a managed Python runtime, and shows a compact in-DAW report with highlights, top detected tags, backend status, and a details mode.
+`REAPER Audio Tag` is a REAPER action for quick clip-level audio inspection. It exports the currently selected audio item, downmixes it to mono, resamples it to `32 kHz`, runs local `PANNs Cnn14` tagging through a managed Python runtime, and shows a compact in-DAW report with highlights, top detected tags, backend status, and a details mode.
 
 v1 intentionally stays narrow: macOS first, one selected audio item at a time, and `clipwise audio tagging` only. It is a practical analysis helper for fast spot checks, not a timeline event detector.
 
@@ -37,9 +37,9 @@ v1 intentionally stays narrow: macOS first, one selected audio item at a time, a
 
 1. Clone this repository.
 2. Run [`scripts/bootstrap.command`](scripts/bootstrap.command) once.
-3. In REAPER, load [`reaper/PANNs Item Report.lua`](reaper/PANNs%20Item%20Report.lua) into the Actions list.
+3. In REAPER, load [`reaper/REAPER Audio Tag.lua`](reaper/REAPER%20Audio%20Tag.lua) into the Actions list.
 4. Select exactly one audio item.
-5. Run `PANNs Item Report`.
+5. Run `REAPER Audio Tag`.
 
 If you are installing from the public release, downloading the source archive and running `scripts/bootstrap.command` is enough. Cloning is only needed for development.
 
@@ -85,4 +85,4 @@ Troubleshooting:
 - The vendored emoji source lives under `reaper/assets/noto-emoji/`, and `scripts/generate_report_emoji_assets.py` regenerates the self-contained Lua bundles when those assets change.
 - The project vendors Noto Emoji image resources, not the font files. For the bundled PNG assets, keep the Apache 2.0 notice under `reaper/assets/noto-emoji/LICENSE-APACHE-2.0.txt` and the attribution note in `THIRD_PARTY_NOTICES.md`.
 - If the image path is unavailable in a specific session, the UI falls back to plain text labels only. Analysis behavior is unchanged.
-- For export diagnostics without running the model, use `reaper/PANNs Item Report - Debug Export.lua`.
+- For export diagnostics without running the model, use `reaper/REAPER Audio Tag - Debug Export.lua`.

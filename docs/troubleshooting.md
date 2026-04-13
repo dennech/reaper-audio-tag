@@ -46,7 +46,7 @@
 
 ## I want to inspect export diagnostics without running the model
 
-- Run `reaper/PANNs Item Report - Debug Export.lua`.
+- Run `reaper/REAPER Audio Tag - Debug Export.lua`.
 - It exports the selected take range, writes a diagnostics log, and stops before the Python runtime step.
 
 ## I am worried about temporary files

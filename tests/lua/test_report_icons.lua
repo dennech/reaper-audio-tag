@@ -46,7 +46,7 @@ function tests.test_atlas_rects_and_uvs_are_available_for_known_icons()
   luaunit.assertEquals(atlas_width > 0, true)
   luaunit.assertEquals(atlas_height > 0, true)
 
-  for _, icon_key in ipairs({ "speech", "synth", "breath", "click", "music", "generic", "brand", "ready", "tags" }) do
+  for _, icon_key in ipairs({ "speech", "synth", "breath", "click", "music", "bubble", "generic", "brand", "ready", "tags" }) do
     local rect = report_icons.icon_rect(icon_key)
     local uv = report_icons.icon_uv(icon_key)
     luaunit.assertEquals(rect ~= nil, true, icon_key)
@@ -75,6 +75,14 @@ function tests.test_unknown_runtime_label_falls_back_to_generic_icon()
   luaunit.assertEquals(report_icon_map.has_known_label("Totally unknown synthetic label"), false)
   luaunit.assertEquals(report_icon_map.label_icon_key("Totally unknown synthetic label"), "generic")
   luaunit.assertEquals(report_icons.icon_rect("generic") ~= nil, true)
+end
+
+function tests.test_bubble_icon_covers_plop_and_liquid_family()
+  luaunit.assertEquals(report_icon_map.label_icon_key("Plop"), "bubble")
+  luaunit.assertEquals(report_icon_map.label_icon_key("Liquid"), "bubble")
+  luaunit.assertEquals(report_icon_map.label_icon_key("Splash, splatter"), "bubble")
+  luaunit.assertEquals(report_icon_map.label_icon_key("Boiling"), "bubble")
+  luaunit.assertEquals(report_icons.icon_rect("bubble") ~= nil, true)
 end
 
 function tests.test_image_invalidates_bad_handle()

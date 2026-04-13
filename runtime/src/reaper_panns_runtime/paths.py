@@ -100,7 +100,7 @@ def project_models_dir_available(paths: RuntimePaths) -> bool:
         expected_checkout_files = (
             repo / "pyproject.toml",
             repo / "scripts" / "bootstrap_runtime.sh",
-            repo / "reaper" / "PANNs Item Report.lua",
+            repo / "reaper" / "REAPER Audio Tag.lua",
         )
         if not all(candidate.exists() for candidate in expected_checkout_files):
             return False

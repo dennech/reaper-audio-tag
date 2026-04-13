@@ -1,6 +1,6 @@
 # Test Layer
 
-This directory contains the repository test scaffold for `REAPER PANNs Item Report v1`.
+This directory contains the repository test scaffold for `REAPER Audio Tag v1`.
 
 ## Layout
 
@@ -36,7 +36,7 @@ Acceptance for all manual cases:
 - Export should not fail only because `accessor_start/accessor_end` disagree with the selected range.
 - When export cannot read part of the range, analysis should still run with padded silence and mark the range as clamped.
 - Only a fully unreadable range should surface `export_failed`.
-- `reaper/PANNs Item Report - Debug Export.lua` should write a diagnostics log without starting the model runtime.
+- `reaper/REAPER Audio Tag - Debug Export.lua` should write a diagnostics log without starting the model runtime.
 - After a finished run, selecting a different item and clicking `Another` should start a new analysis without closing the window.
 - Completed runs should not leave a fresh export WAV behind in `Data/reaper-panns-item-report/tmp`.
 - Cleanup must touch only plugin-owned artifacts under `tmp`, `jobs`, and `logs`; original source media must remain untouched.

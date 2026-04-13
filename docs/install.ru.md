@@ -13,7 +13,7 @@
    - скачает checkpoint `Cnn14_mAP=0.431.pth`
    - проверит checkpoint сильной checksum-проверкой перед активацией runtime
    - запишет runtime config в пользовательскую REAPER data-папку
-7. В REAPER импортируй `reaper/PANNs Item Report.lua` в Actions list.
+7. В REAPER импортируй `reaper/REAPER Audio Tag.lua` в Actions list.
 8. Выбери один аудио-item и запусти скрипт.
 9. После успешного запуска окно можно не закрывать: выбери другой item и нажми `Another`.
 

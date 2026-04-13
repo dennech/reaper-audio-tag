@@ -145,6 +145,9 @@ function tests.test_label_icon_keys_use_semantic_mapping()
   luaunit.assertEquals(formatter.label_icon_key("Gasp", "possible"), "breath")
   luaunit.assertEquals(formatter.label_icon_key("Clicking", "weak"), "click")
   luaunit.assertEquals(formatter.label_icon_key("Music", "weak"), "music")
+  luaunit.assertEquals(formatter.label_icon_key("Liquid", "weak"), "bubble")
+  luaunit.assertEquals(formatter.label_icon_key("Splash, splatter", "weak"), "bubble")
+  luaunit.assertEquals(formatter.label_icon_key("Plop", "weak"), "bubble")
   luaunit.assertEquals(formatter.label_icon_key("Train", "solid"), "train")
   luaunit.assertEquals(formatter.label_icon_key("Dog", "solid"), "dog")
 end
@@ -175,7 +178,7 @@ function tests.test_chip_palette_keys_follow_bucket_strength()
 end
 
 function tests.test_main_script_passes_ctx_to_imgui_calls()
-  local handle = assert(io.open("reaper/PANNs Item Report.lua", "rb"))
+  local handle = assert(io.open("reaper/REAPER Audio Tag.lua", "rb"))
   local source = handle:read("*a")
   handle:close()
   local compact_source = source:gsub("%s+", " ")
@@ -206,7 +209,7 @@ function tests.test_main_script_passes_ctx_to_imgui_calls()
 end
 
 function tests.test_main_script_uses_monotonic_progress()
-  local handle = assert(io.open("reaper/PANNs Item Report.lua", "rb"))
+  local handle = assert(io.open("reaper/REAPER Audio Tag.lua", "rb"))
   local source = handle:read("*a")
   handle:close()
 
@@ -216,7 +219,7 @@ function tests.test_main_script_uses_monotonic_progress()
 end
 
 function tests.test_main_script_uses_unique_ids_for_clickable_tags()
-  local handle = assert(io.open("reaper/PANNs Item Report.lua", "rb"))
+  local handle = assert(io.open("reaper/REAPER Audio Tag.lua", "rb"))
   local source = handle:read("*a")
   handle:close()
 
@@ -227,7 +230,7 @@ function tests.test_main_script_uses_unique_ids_for_clickable_tags()
 end
 
 function tests.test_main_script_keeps_export_diagnostics_without_exposing_log_buttons()
-  local handle = assert(io.open("reaper/PANNs Item Report.lua", "rb"))
+  local handle = assert(io.open("reaper/REAPER Audio Tag.lua", "rb"))
   local source = handle:read("*a")
   handle:close()
 
@@ -239,7 +242,22 @@ function tests.test_main_script_keeps_export_diagnostics_without_exposing_log_bu
 end
 
 function tests.test_debug_export_script_loads()
+  luaunit.assertEquals(loadfile("reaper/REAPER Audio Tag - Debug Export.lua") ~= nil, true)
+end
+
+function tests.test_legacy_action_wrappers_still_load()
+  luaunit.assertEquals(loadfile("reaper/PANNs Item Report.lua") ~= nil, true)
   luaunit.assertEquals(loadfile("reaper/PANNs Item Report - Debug Export.lua") ~= nil, true)
+
+  local handle = assert(io.open("reaper/PANNs Item Report.lua", "rb"))
+  local source = handle:read("*a")
+  handle:close()
+  luaunit.assertStrContains(source, 'dofile(script_dir .. "REAPER Audio Tag.lua")')
+
+  handle = assert(io.open("reaper/PANNs Item Report - Debug Export.lua", "rb"))
+  source = handle:read("*a")
+  handle:close()
+  luaunit.assertStrContains(source, 'dofile(script_dir .. "REAPER Audio Tag - Debug Export.lua")')
 end
 
 function tests.test_export_error_report_hides_runtime_backend_attempts()
@@ -250,7 +268,7 @@ function tests.test_export_error_report_hides_runtime_backend_attempts()
 end
 
 function tests.test_main_script_uses_another_button_and_selection_notice()
-  local handle = assert(io.open("reaper/PANNs Item Report.lua", "rb"))
+  local handle = assert(io.open("reaper/REAPER Audio Tag.lua", "rb"))
   local source = handle:read("*a")
   handle:close()
 
@@ -260,7 +278,7 @@ function tests.test_main_script_uses_another_button_and_selection_notice()
 end
 
 function tests.test_main_script_cleans_up_run_artifacts()
-  local handle = assert(io.open("reaper/PANNs Item Report.lua", "rb"))
+  local handle = assert(io.open("reaper/REAPER Audio Tag.lua", "rb"))
   local source = handle:read("*a")
   handle:close()
 
@@ -270,7 +288,7 @@ function tests.test_main_script_cleans_up_run_artifacts()
 end
 
 function tests.test_main_script_uses_image_pipeline_and_drops_icon_selector()
-  local handle = assert(io.open("reaper/PANNs Item Report.lua", "rb"))
+  local handle = assert(io.open("reaper/REAPER Audio Tag.lua", "rb"))
   local source = handle:read("*a")
   handle:close()
   local icons_handle = assert(io.open("reaper/lib/report_icons.lua", "rb"))
@@ -301,6 +319,9 @@ function tests.test_main_script_uses_image_pipeline_and_drops_icon_selector()
   luaunit.assertStrContains(assets_source, "https://github.com/googlefonts/noto-emoji")
   luaunit.assertStrContains(assets_source, "8998f5dd683424a73e2314a8c1f1e359c19e8742")
   luaunit.assertStrContains(map_source, '["Speech"] = "speech"')
+  luaunit.assertStrContains(map_source, '["Plop"] = "bubble"')
+  luaunit.assertStrContains(assets_source, 'bubble = {')
+  luaunit.assertStrContains(generator_source, '("bubble", "emoji_u1fae7.png")')
   luaunit.assertStrContains(generator_source, "googlefonts/noto-emoji")
   luaunit.assertStrContains(generator_source, "build_atlas()")
   luaunit.assertStrContains(generator_source, "encode_png_rgba")
@@ -313,7 +334,7 @@ function tests.test_main_script_uses_image_pipeline_and_drops_icon_selector()
 end
 
 function tests.test_main_script_does_not_end_hidden_window_twice()
-  local handle = assert(io.open("reaper/PANNs Item Report.lua", "rb"))
+  local handle = assert(io.open("reaper/REAPER Audio Tag.lua", "rb"))
   local source = handle:read("*a")
   handle:close()
 
@@ -327,19 +348,19 @@ function tests.test_main_script_does_not_end_hidden_window_twice()
 end
 
 function tests.test_main_script_tracks_window_open_state_explicitly()
-  local handle = assert(io.open("reaper/PANNs Item Report.lua", "rb"))
+  local handle = assert(io.open("reaper/REAPER Audio Tag.lua", "rb"))
   local source = handle:read("*a")
   handle:close()
 
   luaunit.assertStrContains(source, "window_open = true")
-  luaunit.assertStrContains(source, 'ImGui.Begin(ctx, "PANNs Item Report", state.window_open, ImGui.WindowFlags_NoCollapse())')
+  luaunit.assertStrContains(source, 'ImGui.Begin(ctx, "REAPER Audio Tag", state.window_open, ImGui.WindowFlags_NoCollapse())')
   luaunit.assertStrContains(source, "state.window_open = open")
   luaunit.assertStrContains(source, "if state.window_open then")
-  luaunit.assertEquals(source:find('ImGui.Begin%(ctx, "PANNs Item Report", true,', 1, true), nil)
+  luaunit.assertEquals(source:find('ImGui.Begin%(ctx, "REAPER Audio Tag", true,', 1, true), nil)
 end
 
 function tests.test_main_script_stops_live_job_after_result_and_keeps_log_artifacts()
-  local handle = assert(io.open("reaper/PANNs Item Report.lua", "rb"))
+  local handle = assert(io.open("reaper/REAPER Audio Tag.lua", "rb"))
   local source = handle:read("*a")
   handle:close()
 
@@ -353,7 +374,7 @@ function tests.test_main_script_stops_live_job_after_result_and_keeps_log_artifa
 end
 
 function tests.test_main_script_uses_async_export_session_before_runtime_job()
-  local handle = assert(io.open("reaper/PANNs Item Report.lua", "rb"))
+  local handle = assert(io.open("reaper/REAPER Audio Tag.lua", "rb"))
   local source = handle:read("*a")
   handle:close()
 
@@ -367,7 +388,7 @@ function tests.test_main_script_uses_async_export_session_before_runtime_job()
 end
 
 function tests.test_main_script_renders_full_tag_flow_with_bucket_palette()
-  local handle = assert(io.open("reaper/PANNs Item Report.lua", "rb"))
+  local handle = assert(io.open("reaper/REAPER Audio Tag.lua", "rb"))
   local source = handle:read("*a")
   handle:close()
 
@@ -383,7 +404,7 @@ function tests.test_main_script_renders_full_tag_flow_with_bucket_palette()
 end
 
 function tests.test_main_script_hides_temporary_diagnostics_ui()
-  local handle = assert(io.open("reaper/PANNs Item Report.lua", "rb"))
+  local handle = assert(io.open("reaper/REAPER Audio Tag.lua", "rb"))
   local source = handle:read("*a")
   handle:close()
 

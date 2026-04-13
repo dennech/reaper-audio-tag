@@ -38,4 +38,4 @@ export REAPER_PANNS_REPO_ROOT="${REPO_ROOT}"
 echo
 echo "Bootstrap complete."
 echo "REAPER config: ${APP_DIR}/config.json"
-echo "Add reaper/PANNs Item Report.lua to REAPER Actions and run it on a selected audio item."
+echo "Add reaper/REAPER Audio Tag.lua to REAPER Actions and run it on a selected audio item."
