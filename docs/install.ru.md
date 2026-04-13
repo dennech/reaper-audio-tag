@@ -15,6 +15,7 @@
    - запишет runtime config в пользовательскую REAPER data-папку
 7. В REAPER импортируй `reaper/PANNs Item Report.lua` в Actions list.
 8. Выбери один аудио-item и запусти скрипт.
+9. После успешного запуска окно можно не закрывать: выбери другой item и нажми `Another`.
 
 Если ты скачал публичный source release с GitHub, его можно просто распаковать в любую папку и запустить `scripts/bootstrap.command`. Клонирование нужно только для разработки.
 Если позже ты подтянешь новую ревизию репозитория, один раз снова запусти `scripts/bootstrap.command`, чтобы управляемый runtime внутри REAPER получил обновлённую версию пакета.
@@ -23,7 +24,9 @@
 
 - Config: `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/config.json`
 - Model: `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/models`
-- Jobs и логи: `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/jobs`
+- Jobs: `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/jobs`
+- Временные export WAV: `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/tmp`
+- Export логи: `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/logs`
 
 ## Примечания
 
@@ -31,5 +34,7 @@
 - Скрипт запускает только управляемый runtime внутри `Data/reaper-panns-item-report/runtime/venv`.
 - Перед tagging аудио сводится в mono и ресемплится в `32 kHz`.
 - Отчёт — это clip-level tagging, а не event detection.
+- Временные export WAV и завершённые run artifacts удаляются автоматически. Исходные media files скрипт не удаляет.
 - Если `ReaImGui` не установлен, скрипт покажет инструкцию вместо падения.
+- Если текущая связка ReaImGui/fonts не умеет аккуратно рисовать emoji, UI автоматически переключается на symbol fallback без пустых квадратов.
 - Windows намеренно вынесен за рамки v1.

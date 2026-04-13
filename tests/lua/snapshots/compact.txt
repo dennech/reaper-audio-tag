@@ -1,13 +1,17 @@
-PANNs Item Report
-✅ ok | mps | 842 ms
+🎧 PANNs Report
+🌈 ok • mps • 842 ms
 Top detected tags: sine tone, steady signal, and tonal sound.
-Highlights:
-  🎯 sine tone (0.94)
-  ✨ steady signal (0.89)
-  ✨ tonal sound (0.82)
-Top tags:
-  1. 🎯 sine tone (0.94)
-  2. ✨ steady signal (0.89)
-  3. ✨ tonal sound (0.82)
-  4. 🔎 longer clip (0.42)
-📋 Press Details for the full report
+🍭 Top cues
+  🎯 sine tone 94%
+  🌟 steady signal 89%
+  🌟 tonal sound 82%
+  🫧 soft room noise 28%
+  💭 airy texture 19%
+✨ Tags
+  1. 🎯 sine tone 94%
+  2. 🌟 steady signal 89%
+  3. 🌟 tonal sound 82%
+  4. 🫧 longer clip 42%
+  5. 🫧 soft room noise 28%
+  6. 💭 airy texture 19%
+🔍 More

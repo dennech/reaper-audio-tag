@@ -15,6 +15,7 @@
    - writes the runtime config into the REAPER user data directory
 7. In REAPER, import `reaper/PANNs Item Report.lua` into the Actions list.
 8. Select one audio item and run the script.
+9. After a successful run you can keep the window open, select a different item, and click `Another`.
 
 If you downloaded the public source release from GitHub, you can unpack it anywhere and run `scripts/bootstrap.command` directly. Cloning is only required for development.
 If you pull a newer revision of the repository later, run `scripts/bootstrap.command` once again so the managed runtime inside REAPER picks up the new package version.
@@ -23,7 +24,9 @@ If you pull a newer revision of the repository later, run `scripts/bootstrap.com
 
 - Config: `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/config.json`
 - Model: `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/models`
-- Jobs and logs: `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/jobs`
+- Jobs: `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/jobs`
+- Export temp WAVs: `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/tmp`
+- Export logs: `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/logs`
 
 ## Notes
 
@@ -31,5 +34,7 @@ If you pull a newer revision of the repository later, run `scripts/bootstrap.com
 - The script runs only the managed runtime inside `Data/reaper-panns-item-report/runtime/venv`.
 - Audio is downmixed to mono and resampled to `32 kHz` before tagging.
 - The report is clip-level tagging, not event detection.
+- Temporary export WAVs and finished run artifacts are cleaned up automatically. The original source media is never deleted.
 - If `ReaImGui` is missing, the script shows an install hint instead of crashing.
+- If emoji glyphs are not available in the current ReaImGui/font setup, the UI falls back to symbol icons instead of blank boxes.
 - Windows is intentionally out of scope for v1.

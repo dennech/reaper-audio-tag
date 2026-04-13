@@ -28,6 +28,24 @@
 
 - Make sure exactly one item is selected.
 - Make sure the active take is audio, not MIDI.
+- If you already have a report open, keep the window open, select the new item, and click `Another`.
+
+## The compact view shows symbols instead of emoji
+
+- The script first tries the available ReaImGui font stack for emoji-capable rendering.
+- If that is unavailable, it falls back to safe symbol icons so the UI stays readable.
+- This fallback is expected and does not affect analysis quality.
+
+## I want to inspect export diagnostics without running the model
+
+- Run `reaper/PANNs Item Report - Debug Export.lua`.
+- It exports the selected take range, writes a diagnostics log, and stops before the Python runtime step.
+
+## I am worried about temporary files
+
+- The script only creates temporary WAVs, job files, and logs inside the REAPER app data directory.
+- Those temporary artifacts are cleaned up automatically after completed runs, retries, `Another`, and window close.
+- Original source audio files and project media are never deleted.
 
 ## The tags feel too generic
 

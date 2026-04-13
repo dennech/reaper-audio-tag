@@ -81,6 +81,7 @@ local function error_payload(job, code, message, backend, warnings, elapsed_ms)
   return {
     schema_version = SCHEMA_VERSION,
     status = "error",
+    stage = "runtime",
     backend = backend or "cpu",
     attempted_backends = attempted_backends(requested_backend),
     timing_ms = {

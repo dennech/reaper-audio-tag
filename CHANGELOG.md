@@ -10,3 +10,6 @@
 - Switched bootstrap to a regular packaged install by default, keeping editable mode for `--dev`.
 - Reworked README/onboarding copy for the public macOS-first `v0.1.0` release flow.
 - Added Python, Lua, and integration tests plus GitHub Actions CI.
+- Expanded the compact report to show more cues and tags, added a clearer `Another` rerun flow, and upgraded the fallback icon style for non-emoji ReaImGui setups.
+- Added safe cleanup for temporary export WAVs and finished job artifacts so the script no longer leaves stale app-owned files behind.
+- Documented rerun workflow, export diagnostics, and temporary-file cleanup behavior in the English and Russian docs.
