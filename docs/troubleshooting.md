@@ -35,6 +35,8 @@
 - Make sure you are on the latest version of the script and rerun the action.
 - The report now prepares exported audio incrementally. You should briefly see a `Preparing audio...` stage before runtime inference starts.
 - If responsiveness still drops, capture the current log and note whether the slowdown happens during `Preparing audio...` or during `Listening...`.
+- Include a screenshot of the on-screen `Diagnostics` block.
+- Use the new `Debug log` button in the report window and send that telemetry log along with the regular runtime/export log.
 
 ## The compact view does not show the colorful icons
 

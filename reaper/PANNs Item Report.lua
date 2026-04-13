@@ -11,6 +11,7 @@ local path_utils = require("path_utils")
 local report_icons = require("report_icons")
 local report_presenter = require("report_presenter")
 local report_run_cleanup = require("report_run_cleanup")
+local report_telemetry = require("report_telemetry")
 local report_ui_state = require("report_ui_state")
 local runtime_client = require("runtime_client")
 
@@ -40,6 +41,7 @@ path_utils.ensure_dir(paths.jobs_dir)
 report_run_cleanup.prune_stale(paths)
 
 local ctx = ImGui.CreateContext("PANNs Item Report")
+local telemetry_session_id = "ui_" .. path_utils.sanitize_job_id(reaper.genGuid(""))
 local state = {
   window_open = true,
   current_view = "compact",
@@ -61,6 +63,7 @@ local state = {
     poll_interval_ms = 100,
     view_model = nil,
     view_model_result = nil,
+    telemetry = report_telemetry.new(paths.logs_dir, telemetry_session_id),
     icons = {
       loaded = false,
       images = {},
@@ -171,6 +174,7 @@ local function render_inline_image(icon_key, size)
   if not (image and ImGui.Image) then
     return false
   end
+  report_icons.note_draw(state.ui.icons)
   local ok = pcall(ImGui.Image, ctx, image, size, size)
   if not ok then
     if state.ui.icons.images then
@@ -191,6 +195,7 @@ local function draw_image_icon(draw_list, icon_key, x, y, size)
   if not image then
     return false
   end
+  report_icons.note_draw(state.ui.icons)
   local ok = pcall(ImGui.DrawList_AddImage, draw_list, image, x, y, x + size, y + size)
   if not ok then
     if state.ui.icons.images then
@@ -236,6 +241,22 @@ local function ensure_fonts()
   end
 end
 
+local function measure_phase(name, fn)
+  return report_telemetry.measure(state.ui.telemetry, name, fn)
+end
+
+local function telemetry_label(key, value)
+  report_telemetry.set_label(state.ui.telemetry, key, value)
+end
+
+local function telemetry_counter(key, value)
+  report_telemetry.set_counter(state.ui.telemetry, key, value)
+end
+
+local function telemetry_event(message)
+  report_telemetry.note(state.ui.telemetry, message)
+end
+
 local function open_log()
   if state.result and state.result.stage == "export" and state.export_log_file and path_utils.exists(state.export_log_file) then
     reaper.ExecProcess("open " .. path_utils.sh_quote(state.export_log_file), -2)
@@ -254,6 +275,13 @@ local function open_log()
   end
 end
 
+local function open_debug_log()
+  local debug_log_path = report_telemetry.log_path(state.ui.telemetry)
+  if debug_log_path and path_utils.exists(debug_log_path) then
+    reaper.ExecProcess("open " .. path_utils.sh_quote(debug_log_path), -2)
+  end
+end
+
 local function clear_temp_audio()
   if state.run_artifacts then
     report_run_cleanup.clear_temp_audio(paths, state.run_artifacts)
@@ -262,6 +290,7 @@ end
 
 local function cancel_export_session()
   if state.export_session then
+    telemetry_event("cancel_export_session")
     audio_export.cancel_export(state.export_session)
     state.export_session = nil
   end
@@ -294,7 +323,9 @@ local function current_view_model()
     return nil
   end
   if state.ui.view_model_result ~= state.result then
-    state.ui.view_model = report_presenter.view_model(state.result)
+    state.ui.view_model = measure_phase("view_model", function()
+      return report_presenter.view_model(state.result)
+    end)
     state.ui.view_model_result = state.result
   end
   return state.ui.view_model
@@ -362,6 +393,7 @@ local function start_analysis(options)
       state.current_view = previous_view
       state.focused_tag = previous_focused_tag
       state.notice = err
+      telemetry_event("selection_notice_preserved")
       return
     end
 
@@ -386,6 +418,7 @@ local function start_analysis(options)
       item = export_metadata or {},
       error = { code = "export_failed", message = err },
     })
+    telemetry_event("export_begin_failed")
     return
   end
 
@@ -402,6 +435,7 @@ local function start_analysis(options)
   state.focused_tag = nil
   state.ui.last_poll_at_ms = 0
   state.screen = "exporting"
+  telemetry_event("export_session_started")
 end
 
 local function ensure_started()
@@ -426,7 +460,12 @@ local function render_header()
   ImGui.Separator(ctx)
 end
 
+local render_diagnostics_panel
+
 local function render_setup()
+  telemetry_counter("tags_total", 0)
+  telemetry_counter("visible_tags", 0)
+  telemetry_label("focused_tag", state.focused_tag or "none")
   render_image_label("details", "One quick setup.", badge_color("accent"), 16)
   if state.last_error then
     ImGui.Spacing(ctx)
@@ -448,6 +487,8 @@ local function render_setup()
       start_analysis()
     end
   end
+  ImGui.Spacing(ctx)
+  render_diagnostics_panel()
 end
 
 local function finalize_export_success(export_payload)
@@ -462,6 +503,7 @@ local function finalize_export_success(export_payload)
     state.job = nil
     state.screen = "setup"
     state.last_error = job_err
+    telemetry_event("runtime_start_failed")
     return
   end
 
@@ -470,6 +512,7 @@ local function finalize_export_success(export_payload)
   state.last_loading_ms = 0
   state.ui.last_poll_at_ms = 0
   state.screen = "loading"
+  telemetry_event("runtime_job_started")
 end
 
 local function render_exporting()
@@ -478,11 +521,17 @@ local function render_exporting()
     return
   end
 
-  local stepped = audio_export.step_export(state.export_session, {
-    max_chunks = 32,
-    max_time_ms = 8,
-  })
+  local stepped = measure_phase("export_step", function()
+    return audio_export.step_export(state.export_session, {
+      max_chunks = 32,
+      max_time_ms = 8,
+    })
+  end)
   state.last_export_ms = stepped.elapsed_ms or 0
+  telemetry_label("focused_tag", state.focused_tag or "none")
+  telemetry_counter("export_chunks", stepped.chunks_processed or 0)
+  telemetry_counter("export_frames_written", stepped.frames_written or 0)
+  telemetry_counter("export_total_frames", stepped.total_frames or 0)
 
   if stepped.status == "error" then
     state.export_session = nil
@@ -515,6 +564,8 @@ local function render_exporting()
   local progress = stepped.progress or 0
   local item_length = state.export_session and tonumber(state.export_session.item_length) or 0
   local prepared_seconds = item_length * progress
+  telemetry_counter("tags_total", 0)
+  telemetry_counter("visible_tags", 0)
   local overlay = string.format("Preparing audio... %.0f%%", progress * 100)
   if item_length > 0 then
     overlay = string.format("Preparing audio... %.1f / %.1f s", prepared_seconds, item_length)
@@ -524,19 +575,24 @@ local function render_exporting()
     ImGui.Spacing(ctx)
     ImGui.TextDisabled(ctx, "Chunking the selected item without blocking REAPER...")
   end
+  ImGui.Spacing(ctx)
+  render_diagnostics_panel()
 end
 
 local function render_loading()
   local now_ms = math.floor(reaper.time_precise() * 1000)
   if state.job then
     if state.ui.last_poll_at_ms == 0 or (now_ms - state.ui.last_poll_at_ms) >= state.ui.poll_interval_ms then
-      local polled = runtime_client.poll_job(state.job)
+      local polled = measure_phase("runtime_poll", function()
+        return runtime_client.poll_job(state.job)
+      end)
       state.ui.last_poll_at_ms = now_ms
       if polled.done then
         set_result(polled.payload)
         clear_temp_audio()
         state.job = nil
         state.screen = polled.payload.status == "ok" and "result" or "error"
+        telemetry_event("runtime_job_finished:" .. tostring(polled.payload.status))
       else
         state.last_loading_ms = polled.elapsed_ms
       end
@@ -551,6 +607,9 @@ local function render_loading()
 
   local timeout_sec = state.job and tonumber(state.job.timeout_sec) or 0
   local elapsed_sec = state.last_loading_ms / 1000
+  telemetry_counter("tags_total", 0)
+  telemetry_counter("visible_tags", 0)
+  telemetry_label("focused_tag", state.focused_tag or "none")
   local progress = 0
   local overlay = string.format("Listening... %.1f s", elapsed_sec)
   if timeout_sec and timeout_sec > 0 then
@@ -562,6 +621,8 @@ local function render_loading()
     ImGui.Spacing(ctx)
     ImGui.TextDisabled(ctx, "Still working...")
   end
+  ImGui.Spacing(ctx)
+  render_diagnostics_panel()
 end
 
 local function chip_palette(kind, hovered, active)
@@ -680,6 +741,7 @@ local function render_highlight_pills(vm)
     return
   end
   render_image_label(report_presenter.section_icon_key("cues"), "Top cues", badge_color("accent"), 16)
+  telemetry_counter("highlights_visible", math.min(#vm.highlights, report_presenter.COMPACT_HIGHLIGHT_LIMIT))
   for index, row in ipairs(vm.highlights) do
     if index > report_presenter.COMPACT_HIGHLIGHT_LIMIT then
       break
@@ -696,6 +758,9 @@ local function render_tag_pills(vm)
   local line_width = 0
   local available_width = flow_available_width()
   local ordered = ordered_predictions(vm)
+  telemetry_counter("tags_total", #vm.predictions)
+  telemetry_counter("visible_tags", #ordered)
+  telemetry_label("focused_tag", state.focused_tag or "none")
 
   for index, prediction in ipairs(ordered) do
     local metrics = chip_metrics(prediction, "flow")
@@ -712,6 +777,29 @@ local function render_tag_pills(vm)
   end
 end
 
+render_diagnostics_panel = function()
+  ImGui.Separator(ctx)
+  render_image_label("details", "Diagnostics", badge_color("accent"), 16)
+  for _, line in ipairs(report_telemetry.summary_lines(state.ui.telemetry)) do
+    ImGui.TextDisabled(ctx, line)
+  end
+  if ImGui.Button(ctx, "Debug log") then
+    open_debug_log()
+  end
+  ImGui.SameLine(ctx)
+  ImGui.TextDisabled(ctx, tostring(report_telemetry.log_basename(state.ui.telemetry) or "ui-telemetry.log"))
+  if state.current_view == "details" then
+    local events = report_telemetry.event_lines(state.ui.telemetry, 6)
+    if #events > 0 then
+      ImGui.Spacing(ctx)
+      ImGui.TextColored(ctx, badge_color("warning"), "Recent slow frames")
+      for _, line in ipairs(events) do
+        ImGui.BulletText(ctx, line)
+      end
+    end
+  end
+end
+
 local function render_result()
   local vm = current_view_model()
 
@@ -722,9 +810,13 @@ local function render_result()
   render_static_chip(string.format("%d ms", vm.total_ms), "accent")
   ImGui.Spacing(ctx)
 
-  render_highlight_pills(vm)
+  measure_phase("render_highlight_pills", function()
+    render_highlight_pills(vm)
+  end)
   ImGui.Spacing(ctx)
-  render_tag_pills(vm)
+  measure_phase("render_tag_pills", function()
+    render_tag_pills(vm)
+  end)
   if state.notice then
     ImGui.Spacing(ctx)
     ImGui.TextColored(ctx, badge_color("warning"), tostring(state.notice))
@@ -778,7 +870,9 @@ local function render_result()
       ImGui.Spacing(ctx)
       ImGui.TextDisabled(ctx, string.format("Accessor domain: %s", tostring(vm.item.accessor_time_domain)))
     end
-    render_prediction_rows(vm, math.min(#vm.predictions, 12), true)
+    measure_phase("render_prediction_rows", function()
+      render_prediction_rows(vm, math.min(#vm.predictions, 12), true)
+    end)
     if #vm.warnings > 0 then
       ImGui.Spacing(ctx)
       ImGui.TextColored(ctx, badge_color("warning"), "Notes")
@@ -797,9 +891,14 @@ local function render_result()
     ImGui.Spacing(ctx)
     ImGui.TextDisabled(ctx, "Clip tags only, not events.")
   end
+  ImGui.Spacing(ctx)
+  render_diagnostics_panel()
 end
 
 local function render_error()
+  telemetry_counter("tags_total", 0)
+  telemetry_counter("visible_tags", 0)
+  telemetry_label("focused_tag", state.focused_tag or "none")
   local error_text = report_presenter.error_report(state.result)
   ImGui.TextWrapped(ctx, error_text)
   if state.result and state.result.item and state.result.item.item_position and state.result.item.item_length then
@@ -830,6 +929,8 @@ local function render_error()
       open_log()
     end
   end
+  ImGui.Spacing(ctx)
+  render_diagnostics_panel()
 end
 
 local function loop()
@@ -840,23 +941,36 @@ local function loop()
   local visible, open = ImGui.Begin(ctx, "PANNs Item Report", state.window_open, ImGui.WindowFlags_NoCollapse())
   state.window_open = open
   if visible then
+    report_telemetry.begin_frame(state.ui.telemetry, state.screen)
+    report_icons.begin_frame(state.ui.icons)
+    telemetry_label("current_view", state.current_view)
     local pushed_base_font = push_font(state.ui.base_font, 15)
     local ok, err = xpcall(function()
-      render_header()
-      if state.screen == "setup" then
-        render_setup()
-      elseif state.screen == "exporting" then
-        render_exporting()
-      elseif state.screen == "loading" then
-        render_loading()
-      elseif state.screen == "result" then
-        render_result()
-      elseif state.screen == "error" then
-        render_error()
-      else
-        ImGui.TextWrapped(ctx, "Warming up...")
-      end
+      measure_phase("render_content", function()
+        measure_phase("render_header", render_header)
+        if state.screen == "setup" then
+          measure_phase("render_setup", render_setup)
+        elseif state.screen == "exporting" then
+          measure_phase("render_exporting", render_exporting)
+        elseif state.screen == "loading" then
+          measure_phase("render_loading", render_loading)
+        elseif state.screen == "result" then
+          measure_phase("render_result", render_result)
+        elseif state.screen == "error" then
+          measure_phase("render_error", render_error)
+        else
+          ImGui.TextWrapped(ctx, "Warming up...")
+        end
+      end)
     end, debug.traceback)
+    local icon_stats = report_icons.frame_stats(state.ui.icons)
+    telemetry_counter("icon_lookups", icon_stats.image_calls or 0)
+    telemetry_counter("icon_draws", icon_stats.draw_calls or 0)
+    telemetry_counter("icon_misses", icon_stats.misses or 0)
+    telemetry_counter("icon_invalidations", icon_stats.invalidations or 0)
+    telemetry_counter("icon_creates", icon_stats.create_calls or 0)
+    telemetry_counter("icon_validates", icon_stats.validate_calls or 0)
+    report_telemetry.finish_frame(state.ui.telemetry)
     if pushed_base_font then
       ImGui.PopFont(ctx)
     end

@@ -372,4 +372,24 @@ function tests.test_main_script_renders_full_tag_flow_with_bucket_palette()
   luaunit.assertStrContains(source, "weak = { 0xF8C0D0FF")
 end
 
+function tests.test_main_script_exposes_debug_telemetry_panel_and_log()
+  local handle = assert(io.open("reaper/PANNs Item Report.lua", "rb"))
+  local source = handle:read("*a")
+  handle:close()
+  local telemetry_handle = assert(io.open("reaper/lib/report_telemetry.lua", "rb"))
+  local telemetry_source = telemetry_handle:read("*a")
+  telemetry_handle:close()
+
+  luaunit.assertStrContains(source, 'require("report_telemetry")')
+  luaunit.assertStrContains(source, "report_telemetry.new(paths.logs_dir")
+  luaunit.assertStrContains(source, 'render_image_label("details", "Diagnostics"')
+  luaunit.assertStrContains(source, 'ImGui.Button(ctx, "Debug log")')
+  luaunit.assertStrContains(source, "report_telemetry.summary_lines(state.ui.telemetry)")
+  luaunit.assertStrContains(source, "report_telemetry.event_lines(state.ui.telemetry, 6)")
+  luaunit.assertStrContains(source, "report_icons.begin_frame(state.ui.icons)")
+  luaunit.assertStrContains(source, "report_telemetry.finish_frame(state.ui.telemetry)")
+  luaunit.assertStrContains(telemetry_source, "report_ui_telemetry_v1")
+  luaunit.assertStrContains(telemetry_source, "frame=%d stage=%s")
+end
+
 return tests

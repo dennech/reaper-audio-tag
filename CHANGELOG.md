@@ -18,3 +18,4 @@
 - Moved the preferred checkpoint cache to repo-local `.local-models/` in writable checkouts, kept `.gitignore` protection, and preserved REAPER data-dir fallback for non-writable or atypical environments.
 - Reworked selected-item export into an incremental async Lua session so opening the report no longer blocks REAPER while the temporary WAV is being prepared.
 - Changed the main report to show the full tag ranking as wrapped pill chips and normalized chip colors across `Strong`, `Solid`, `Possible`, and `Low` buckets.
+- Added a temporary on-screen diagnostics block plus a `Debug log` telemetry file so lingering REAPER slowdowns can be profiled from screenshots and logs.

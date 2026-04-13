@@ -135,4 +135,33 @@ function tests.test_ensure_loaded_skips_full_reload_for_warm_cache()
   luaunit.assertEquals(cache.available, true)
 end
 
+function tests.test_icon_frame_stats_track_lookups_and_invalidations()
+  local cache = {
+    loaded = true,
+    available = true,
+    images = {
+      speech = { valid = true },
+      breath = { valid = false },
+    },
+  }
+  local fake_imgui = {
+    ValidatePtr = function(image, kind)
+      return kind == "ImGui_Image*" and image.valid == true
+    end,
+  }
+
+  report_icons.begin_frame(cache)
+  report_icons.note_draw(cache)
+  luaunit.assertEquals(report_icons.image(fake_imgui, cache, "speech") ~= nil, true)
+  luaunit.assertEquals(report_icons.image(fake_imgui, cache, "breath"), nil)
+
+  local stats = report_icons.frame_stats(cache)
+  luaunit.assertEquals(stats.image_calls, 2)
+  luaunit.assertEquals(stats.draw_calls, 1)
+  luaunit.assertEquals(stats.hits, 1)
+  luaunit.assertEquals(stats.misses, 1)
+  luaunit.assertEquals(stats.invalidations, 1)
+  luaunit.assertEquals(stats.validate_calls >= 2, true)
+end
+
 return tests
