@@ -708,8 +708,9 @@ local function loop()
       state.screen = "error"
       state.result = internal_ui_error_result("The report window hit an internal UI error. Reopen the report if the problem persists.\n\n" .. tostring(err))
     end
-  else
-    ImGui.End(ctx)
+  end
+
+  if not visible then
     pop_theme(color_count, var_count)
   end
 

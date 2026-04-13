@@ -274,4 +274,18 @@ function tests.test_main_script_uses_image_pipeline_and_drops_icon_selector()
   luaunit.assertEquals(source:find("CreateFontFromFile", 1, true), nil)
 end
 
+function tests.test_main_script_does_not_end_hidden_window_twice()
+  local handle = assert(io.open("reaper/PANNs Item Report.lua", "rb"))
+  local source = handle:read("*a")
+  handle:close()
+
+  local end_count = 0
+  for _ in source:gmatch("ImGui%.End%(ctx%)") do
+    end_count = end_count + 1
+  end
+
+  luaunit.assertEquals(end_count, 1)
+  luaunit.assertEquals(source:find("else%s+ImGui%.End%(ctx%)") ~= nil, false)
+end
+
 return tests
