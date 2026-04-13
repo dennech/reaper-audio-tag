@@ -4,12 +4,17 @@ SNAPSHOT_DIR = 'tests/lua/snapshots'
 local luaunit = require('tests.lua.vendor.luaunit')
 local tests = {}
 local audio_export_tests = require('tests.lua.test_audio_export')
+local report_icon_tests = require('tests.lua.test_report_icons')
 local report_tests = require('tests.lua.test_report_formatter')
 local report_cleanup_tests = require('tests.lua.test_report_run_cleanup')
 local report_ui_state_tests = require('tests.lua.test_report_ui_state')
 local runtime_tests = require('tests.lua.test_runtime_client')
 
 for name, fn in pairs(audio_export_tests) do
+  tests[name] = fn
+end
+
+for name, fn in pairs(report_icon_tests) do
   tests[name] = fn
 end
 

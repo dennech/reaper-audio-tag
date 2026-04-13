@@ -1,6 +1,6 @@
-🎧 PANNs Report
-🫠 Try again
+PANNs Report
+Try again
 missing_model
 Model checkpoint was not found
 Tried: mps -> cpu
-😅 mps_requested_but_unavailable
+Warnings: mps_requested_but_unavailable

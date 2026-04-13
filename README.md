@@ -78,5 +78,6 @@ Troubleshooting:
 - The first release is intentionally conservative: reliability and fallback behavior are prioritized over maximum acceleration.
 - The report is clip-level tagging guidance, not event detection or timeline localization.
 - The script cleans up only its own temporary export WAVs, job files, and logs inside `Data/reaper-panns-item-report/{tmp,jobs,logs}`. It never deletes the original source audio or project media.
-- The `More` view includes an `Icons: Auto / Emoji / Symbols` selector. `Auto` uses the ReaImGui system-font fallback path for mixed emoji text, while `Symbols` forces the safe symbol fallback.
+- The compact report now uses built-in colorful sticker icons instead of system emoji, so tag chips look consistent across REAPER/ReaImGui setups.
+- If the image path is unavailable in a specific session, the UI falls back to plain text labels only. Analysis behavior is unchanged.
 - For export diagnostics without running the model, use `reaper/PANNs Item Report - Debug Export.lua`.

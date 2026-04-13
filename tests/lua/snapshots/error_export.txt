@@ -1,5 +1,5 @@
-🎧 PANNs Report
-🫠 Try again
+PANNs Report
+Try again
 export_failed
 Could not read audio data from the selected take range.
 Accessor: item_local

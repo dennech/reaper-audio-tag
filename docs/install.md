@@ -36,5 +36,6 @@ If you pull a newer revision of the repository later, run `scripts/bootstrap.com
 - The report is clip-level tagging, not event detection.
 - Temporary export WAVs and finished run artifacts are cleaned up automatically. The original source media is never deleted.
 - If `ReaImGui` is missing, the script shows an install hint instead of crashing.
-- If emoji glyphs are not available in the current ReaImGui/font setup, the UI falls back to symbol icons instead of blank boxes.
+- The compact UI uses built-in sticker icons, so it no longer depends on system emoji rendering.
+- If the image path is unavailable in a specific REAPER session, the UI falls back to plain text labels instead of blank boxes.
 - Windows is intentionally out of scope for v1.

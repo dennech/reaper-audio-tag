@@ -1,21 +1,23 @@
-🎧 PANNs Report — More
-🌈 ok • mps • 842 ms
+PANNs Report — More
+ok • mps • 842 ms
 Stage: runtime
 Tried: mps -> cpu
 Clip tags only, not events.
 Predictions:
-  - 🎯 Speech 0.78
+  - [Strong] Speech 0.78
     3/3 seg | peak 0.81
-  - 🌟 Speech synthesizer 0.67
+  - [Solid] Speech synthesizer 0.67
     3/3 seg | peak 0.72
-  - 🌟 Sigh 0.66
+  - [Solid] Sigh 0.66
     3/3 seg | peak 0.68
-  - 🫧 Gasp 0.11
+  - [Possible] Gasp 0.11
     1/3 seg | peak 0.12
-  - 🫧 Narration, monologue 0.11
+  - [Possible] Narration, monologue 0.11
     1/3 seg | peak 0.13
-  - 💭 Clicking 0.09
+  - [Low] Clicking 0.09
     1/3 seg | peak 0.10
-  - 💭 Unknown texture 0.04
+  - [Low] Music 0.08
+    1/3 seg | peak 0.09
+  - [Low] Unknown texture 0.04
     1/3 seg | peak 0.06
 Model: Cnn14 • managed runtime

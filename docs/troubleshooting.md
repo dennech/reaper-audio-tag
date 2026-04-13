@@ -30,12 +30,12 @@
 - Make sure the active take is audio, not MIDI.
 - If you already have a report open, keep the window open, select the new item, and click `Another`.
 
-## The compact view shows symbols instead of emoji
+## The compact view does not show the colorful icons
 
-- Open `More` and switch `Icons` between `Auto`, `Emoji`, and `Symbols`.
-- `Auto` uses the ReaImGui system-font fallback path for mixed emoji text.
-- `Symbols` forces the safe symbol fallback so the UI stays readable on builds that still refuse to show emoji.
-- This fallback is expected and does not affect analysis quality.
+- The current build uses embedded PNG sticker icons instead of system emoji.
+- If the compact chips show text without icons, the image decode/render path is unavailable in that REAPER session.
+- Analysis quality is unaffected; this is only a presentation fallback.
+- Restarting the script is usually enough to restore the image path if the session was in a bad UI state.
 
 ## I want to inspect export diagnostics without running the model
 

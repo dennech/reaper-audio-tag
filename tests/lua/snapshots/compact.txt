@@ -1,17 +1,17 @@
-🎧 PANNs Report
-🌈 ok • mps • 842 ms
+PANNs Report
+ok • mps • 842 ms
 Top detected tags: Speech, Speech synthesizer, and Sigh.
-🍭 Top cues 🍭
-  Speech 78% 🎙️
-  Speech synthesizer 67% 🎛️
-  Sigh 66% 😮‍💨
-  Narration, monologue 11% 🎙️
-  Gasp 11% 😮‍💨
-✨ Tags ✨
-  1. Speech 78% 🎙️
-  2. Speech synthesizer 67% 🎛️
-  3. Sigh 66% 😮‍💨
-  4. Gasp 11% 😮‍💨
-  5. Narration, monologue 11% 🎙️
-  6. Clicking 9% 🖱️
-🔍 More
+Top cues
+  Speech 78%
+  Speech synthesizer 67%
+  Sigh 66%
+  Narration, monologue 11%
+  Gasp 11%
+Tags
+  1. Speech 78%
+  2. Speech synthesizer 67%
+  3. Sigh 66%
+  4. Gasp 11%
+  5. Narration, monologue 11%
+  6. Clicking 9%
+More

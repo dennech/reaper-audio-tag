@@ -3,70 +3,43 @@ local M = {}
 M.COMPACT_HIGHLIGHT_LIMIT = 5
 M.COMPACT_TAG_LIMIT = 6
 
-local ICONS = {
-  emoji = {
-    brand = "🎧",
-    strong = "🎯",
-    solid = "🌟",
-    possible = "🫧",
-    weak = "💭",
-    loading = "🍬",
-    success = "🌈",
-    warning = "😅",
-    error = "🫠",
-    details = "🔍",
-    cues = "🍭",
-    tags = "✨",
-  },
-  fallback = {
-    brand = "♫",
-    strong = "✦",
-    solid = "✷",
-    possible = "❋",
-    weak = "·",
-    loading = "◔",
-    success = "✓",
-    warning = "⚠",
-    error = "✕",
-    details = "➜",
-    cues = "✦",
-    tags = "❖",
-  },
-}
-
-local LABEL_EMOJI_RULES = {
+local LABEL_ICON_RULES = {
   {
     patterns = { "synth", "synthesizer", "electronic" },
-    emoji = "🎛️",
-    fallback = "✷",
+    icon_key = "synth",
   },
   {
     patterns = { "speech", "narration", "monologue", "conversation", "talking" },
-    emoji = "🎙️",
-    fallback = "✦",
+    icon_key = "speech",
   },
   {
     patterns = { "sigh", "breath", "gasp", "pant", "exhale", "inhale" },
-    emoji = "😮‍💨",
-    fallback = "❋",
+    icon_key = "breath",
   },
   {
     patterns = { "click", "clicking", "tap", "typing" },
-    emoji = "🖱️",
-    fallback = "⌘",
+    icon_key = "click",
   },
   {
     patterns = { "music", "song", "melody", "singing" },
-    emoji = "🎵",
-    fallback = "♪",
+    icon_key = "music",
   },
 }
 
-local function icon_set(icon_mode)
-  if icon_mode == "symbols" or icon_mode == "fallback" then
-    return ICONS.fallback
-  end
-  return ICONS.emoji
+local BUCKET_LABELS = {
+  strong = "Strong",
+  solid = "Solid",
+  possible = "Possible",
+  weak = "Low",
+}
+
+local SECTION_ICONS = {
+  cues = "cues",
+  tags = "tags",
+}
+
+local function normalized_label(label)
+  return tostring(label or ""):lower()
 end
 
 local function clone_predictions(predictions)
@@ -94,45 +67,8 @@ local function round_score(score)
   return string.format("%.2f", tonumber(score) or 0)
 end
 
-local function bucket_icon(bucket)
-  return icon_set("emoji")[bucket] or "•"
-end
-
-function M.icon(key, icon_mode)
-  return icon_set(icon_mode)[key] or icon_set("fallback")[key] or "?"
-end
-
-function M.bucket_icon(bucket, icon_mode)
-  local icons = icon_set(icon_mode)
-  return icons[bucket] or icon_set("fallback")[bucket] or "•"
-end
-
-local function normalized_label(label)
-  return tostring(label or ""):lower()
-end
-
-function M.section_emoji(section_key, icon_mode)
-  return M.icon(section_key, icon_mode)
-end
-
-function M.label_emoji(label, icon_mode, bucket)
-  local lowered = normalized_label(label)
-  for _, rule in ipairs(LABEL_EMOJI_RULES) do
-    for _, pattern in ipairs(rule.patterns) do
-      if lowered:find(pattern, 1, true) then
-        if icon_mode == "symbols" or icon_mode == "fallback" then
-          return rule.fallback
-        end
-        return rule.emoji
-      end
-    end
-  end
-  return M.bucket_icon(bucket, icon_mode)
-end
-
-function M.decorate_chip_label(label, score, icon_mode, bucket)
-  local percent = math.floor((tonumber(score) or 0) * 100 + 0.5)
-  return string.format("%s %d%% %s", tostring(label or "Unknown"), percent, M.label_emoji(label, icon_mode, bucket))
+local function append(lines, value)
+  lines[#lines + 1] = value
 end
 
 local function support_text(row)
@@ -142,6 +78,34 @@ local function support_text(row)
     return "Support: n/a"
   end
   return string.format("%d/%d seg | peak %s", support_count, segment_count, round_score(row.peak_score))
+end
+
+function M.section_icon_key(section_key)
+  return SECTION_ICONS[section_key] or "generic"
+end
+
+function M.label_icon_key(label, bucket)
+  local lowered = normalized_label(label)
+  for _, rule in ipairs(LABEL_ICON_RULES) do
+    for _, pattern in ipairs(rule.patterns) do
+      if lowered:find(pattern, 1, true) then
+        return rule.icon_key
+      end
+    end
+  end
+  if bucket == "possible" or bucket == "weak" then
+    return "generic"
+  end
+  return "generic"
+end
+
+function M.decorate_chip_label(label, score)
+  local percent = math.floor((tonumber(score) or 0) * 100 + 0.5)
+  return string.format("%s %d%%", tostring(label or "Unknown"), percent)
+end
+
+function M.bucket_label(bucket)
+  return BUCKET_LABELS[bucket] or "Tag"
 end
 
 function M.view_model(result)
@@ -178,52 +142,46 @@ function M.view_model(result)
   }
 end
 
-local function append(lines, value)
-  lines[#lines + 1] = value
-end
-
-function M.compact_report(result, options)
-  local icons = icon_set(options and options.icon_mode)
+function M.compact_report(result)
   local vm = M.view_model(result)
   local lines = {}
 
-  append(lines, icons.brand .. " " .. vm.title)
-  append(lines, string.format("%s %s • %s • %d ms", icons.success, vm.status, tostring(vm.backend or "cpu"), vm.total_ms))
+  append(lines, vm.title)
+  append(lines, string.format("%s • %s • %d ms", vm.status, tostring(vm.backend or "cpu"), vm.total_ms))
   append(lines, vm.summary)
 
   if #vm.highlights > 0 then
-    append(lines, string.format("%s Top cues %s", icons.cues, M.section_emoji("cues", options and options.icon_mode)))
+    append(lines, "Top cues")
     for index, row in ipairs(vm.highlights) do
       if index > M.COMPACT_HIGHLIGHT_LIMIT then
         break
       end
-      append(lines, "  " .. M.decorate_chip_label(row.label, row.score, options and options.icon_mode, row.bucket))
+      append(lines, "  " .. M.decorate_chip_label(row.label, row.score))
     end
   end
 
-  append(lines, string.format("%s Tags %s", icons.tags, M.section_emoji("tags", options and options.icon_mode)))
+  append(lines, "Tags")
   for index, prediction in ipairs(vm.predictions) do
     if index > M.COMPACT_TAG_LIMIT then
       break
     end
-    append(lines, string.format("  %d. %s", index, M.decorate_chip_label(prediction.label, prediction.score, options and options.icon_mode, prediction.bucket)))
+    append(lines, string.format("  %d. %s", index, M.decorate_chip_label(prediction.label, prediction.score)))
   end
 
   if #vm.warnings > 0 then
-    append(lines, icons.warning .. " " .. table.concat(vm.warnings, " | "))
+    append(lines, "Warnings: " .. table.concat(vm.warnings, " | "))
   end
 
-  append(lines, icons.details .. " More")
+  append(lines, "More")
   return table.concat(lines, "\n")
 end
 
-function M.detail_report(result, options)
-  local icons = icon_set(options and options.icon_mode)
+function M.detail_report(result)
   local vm = M.view_model(result)
   local lines = {}
 
-  append(lines, icons.brand .. " " .. vm.title .. " — More")
-  append(lines, string.format("%s %s • %s • %d ms", icons.success, vm.status, tostring(vm.backend or "cpu"), vm.total_ms))
+  append(lines, vm.title .. " — More")
+  append(lines, string.format("%s • %s • %d ms", vm.status, tostring(vm.backend or "cpu"), vm.total_ms))
   append(lines, "Stage: " .. tostring(vm.stage))
   if #vm.attempted_backends > 0 then
     append(lines, "Tried: " .. table.concat(vm.attempted_backends, " -> "))
@@ -240,7 +198,7 @@ function M.detail_report(result, options)
   append(lines, "Clip tags only, not events.")
   append(lines, "Predictions:")
   for _, prediction in ipairs(vm.predictions) do
-    append(lines, string.format("  - %s %s %s", M.bucket_icon(prediction.bucket, options and options.icon_mode), prediction.label, round_score(prediction.score)))
+    append(lines, string.format("  - [%s] %s %s", M.bucket_label(prediction.bucket), prediction.label, round_score(prediction.score)))
     append(lines, "    " .. support_text(prediction))
   end
 
@@ -258,26 +216,24 @@ function M.detail_report(result, options)
   return table.concat(lines, "\n")
 end
 
-function M.loading_report(elapsed_ms, options)
-  local icons = icon_set(options and options.icon_mode)
+function M.loading_report(elapsed_ms)
   local total_ms = tonumber(elapsed_ms) or 0
   local seconds = math.floor(total_ms / 100) / 10
   return table.concat({
-    icons.brand .. " PANNs Report",
-    icons.loading .. " Listening...",
+    "PANNs Report",
+    "Listening...",
     string.format("%.1f s", seconds),
   }, "\n")
 end
 
-function M.error_report(result, options)
-  local icons = icon_set(options and options.icon_mode)
+function M.error_report(result)
   local error_object = result and result.error or nil
   local code = error_object and error_object.code or "unknown_error"
   local message = error_object and error_object.message or "No details available."
   local stage = result and result.stage or "runtime"
   local lines = {
-    icons.brand .. " PANNs Report",
-    icons.error .. " Try again",
+    "PANNs Report",
+    "Try again",
     tostring(code),
     message,
   }
@@ -291,7 +247,7 @@ function M.error_report(result, options)
     append(lines, "Tried: " .. table.concat(result.attempted_backends, " -> "))
   end
   if result and result.warnings and #result.warnings > 0 then
-    append(lines, icons.warning .. " " .. table.concat(result.warnings, " | "))
+    append(lines, "Warnings: " .. table.concat(result.warnings, " | "))
   end
   return table.concat(lines, "\n")
 end

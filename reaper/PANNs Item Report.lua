@@ -8,6 +8,7 @@ package.path = table.concat({
 local app_paths = require("app_paths")
 local audio_export = require("audio_export")
 local path_utils = require("path_utils")
+local report_icons = require("report_icons")
 local report_presenter = require("report_presenter")
 local report_run_cleanup = require("report_run_cleanup")
 local report_ui_state = require("report_ui_state")
@@ -51,11 +52,16 @@ local state = {
   notice = nil,
   run_artifacts = nil,
   ui = {
-    icon_mode = report_ui_state.load_icon_mode(reaper),
     base_font = nil,
     fonts_ready = false,
     last_poll_at_ms = 0,
     poll_interval_ms = 100,
+    icons = {
+      loaded = false,
+      images = {},
+      available = false,
+      draw_failed = false,
+    },
   },
 }
 
@@ -134,32 +140,8 @@ local function pop_theme(color_count, var_count)
   ImGui.PopStyleColor(ctx, color_count)
 end
 
-local function push_button_style(kind)
-  local palette = {
-    accent = { THEME.button, THEME.button_hover, THEME.button_active, THEME.text },
-    success = { THEME.mint, 0xA9E9D3FF, 0x93DEC5FF, THEME.text },
-    warning = { THEME.peach, 0xFFD3A0FF, 0xFFC48CFF, THEME.text },
-    error = { 0xFFD0D9FF, 0xFFC1CDFF, 0xF6A8BAFF, THEME.text },
-    sparkle = { THEME.lavender, 0xD2C6FFFF, 0xC6B6FFFF, THEME.text },
-  }
-  local colors = palette[kind] or palette.accent
-  ImGui.PushStyleColor(ctx, ImGui.Col_Button(), colors[1])
-  ImGui.PushStyleColor(ctx, ImGui.Col_ButtonHovered(), colors[2])
-  ImGui.PushStyleColor(ctx, ImGui.Col_ButtonActive(), colors[3])
-  ImGui.PushStyleColor(ctx, ImGui.Col_Text(), colors[4])
-  return 4
-end
-
-local function pop_button_style(count)
-  ImGui.PopStyleColor(ctx, count)
-end
-
 local function render_static_chip(label, kind)
   ImGui.TextColored(ctx, badge_color(kind), "[" .. label .. "]")
-end
-
-local function icon_text(icon_key)
-  return report_presenter.icon(icon_key, state.ui.icon_mode)
 end
 
 local function push_font(font, size)
@@ -170,24 +152,51 @@ local function push_font(font, size)
   return false
 end
 
-local function render_icon(icon_key, color, size)
-  local icon = icon_text(icon_key)
-  ImGui.TextColored(ctx, color, icon)
+local function ensure_icons()
+  report_icons.ensure_loaded(ImGui, state.ui.icons)
 end
 
-local function render_icon_value(icon, color, size)
-  ImGui.TextColored(ctx, color, icon)
+local function image_for(icon_key)
+  return report_icons.image(state.ui.icons, icon_key)
 end
 
-local function render_icon_label(icon_key, text, color)
-  render_icon(icon_key, color, 16)
-  ImGui.SameLine(ctx, 0, 6)
+local function render_inline_image(icon_key, size)
+  local image = image_for(icon_key)
+  if not (image and ImGui.Image) then
+    return false
+  end
+  ImGui.Image(ctx, image, size, size)
+  return true
+end
+
+local function draw_image_icon(draw_list, icon_key, x, y, size)
+  if state.ui.icons.draw_failed or not ImGui.DrawList_AddImage then
+    return false
+  end
+  local image = image_for(icon_key)
+  if not image then
+    return false
+  end
+  local ok = pcall(ImGui.DrawList_AddImage, draw_list, image, x, y, x + size, y + size)
+  if not ok then
+    state.ui.icons.draw_failed = true
+    return false
+  end
+  return true
+end
+
+local function render_image_label(icon_key, text, color, size)
   ImGui.TextColored(ctx, color, text)
+  ImGui.SameLine(ctx, 0, 6)
+  if not render_inline_image(icon_key, size or 16) then
+    ImGui.NewLine(ctx)
+  end
 end
 
 local function render_metric_chip(icon_key, label, kind)
-  render_icon(icon_key, badge_color(kind), 14)
-  ImGui.SameLine(ctx, 0, 4)
+  if render_inline_image(icon_key, 16) then
+    ImGui.SameLine(ctx, 0, 4)
+  end
   render_static_chip(label, kind)
 end
 
@@ -197,6 +206,7 @@ local function ensure_fonts()
   end
 
   state.ui.fonts_ready = true
+  ensure_icons()
   if not (ImGui.CreateFont and ImGui.Attach) then
     return
   end
@@ -363,14 +373,17 @@ end
 
 local function render_header()
   local chip_label, chip_kind, chip_icon = status_chip()
-  render_icon_label("brand", "PANNs Report", badge_color("accent"))
-  ImGui.SameLine(ctx)
+  if render_inline_image("brand", 20) then
+    ImGui.SameLine(ctx, 0, 8)
+  end
+  ImGui.TextColored(ctx, badge_color("accent"), "PANNs Report")
+  ImGui.SameLine(ctx, 0, 16)
   render_metric_chip(chip_icon, chip_label, chip_kind)
   ImGui.Separator(ctx)
 end
 
 local function render_setup()
-  render_icon_label("details", "One quick setup.", badge_color("accent"))
+  render_image_label("details", "One quick setup.", badge_color("accent"), 16)
   if state.last_error then
     ImGui.Spacing(ctx)
     ImGui.TextColored(ctx, badge_color("warning"), tostring(state.last_error))
@@ -411,19 +424,17 @@ local function render_loading()
     end
   end
 
-  local loading_text = report_presenter.loading_report(state.last_loading_ms, {
-    icon_mode = state.ui.icon_mode,
-  })
+  local loading_text = report_presenter.loading_report(state.last_loading_ms)
   ImGui.TextWrapped(ctx, loading_text)
   ImGui.Spacing(ctx)
 
   local timeout_sec = state.job and tonumber(state.job.timeout_sec) or 0
   local elapsed_sec = state.last_loading_ms / 1000
   local progress = 0
-  local overlay = string.format("%s %.1f s", icon_text("loading"), elapsed_sec)
+  local overlay = string.format("Listening... %.1f s", elapsed_sec)
   if timeout_sec and timeout_sec > 0 then
     progress = math.min(0.99, state.last_loading_ms / (timeout_sec * 1000))
-    overlay = string.format("%s %.1f / %d s", icon_text("loading"), elapsed_sec, timeout_sec)
+    overlay = string.format("Listening... %.1f / %d s", elapsed_sec, timeout_sec)
   end
   ImGui.ProgressBar(ctx, progress, -1, 0, overlay)
   if state.last_loading_ms > 1000 then
@@ -432,18 +443,52 @@ local function render_loading()
   end
 end
 
+local function chip_palette(kind, hovered, active)
+  local palette = {
+    accent = { THEME.button, THEME.button_hover, THEME.button_active },
+    success = { THEME.mint, 0xA9E9D3FF, 0x93DEC5FF },
+    sparkle = { THEME.lavender, 0xD2C6FFFF, 0xC6B6FFFF },
+  }
+  local colors = palette[kind] or palette.accent
+  if active then
+    return colors[3]
+  end
+  if hovered then
+    return colors[2]
+  end
+  return colors[1]
+end
+
 local function render_tag_chip(group_id, index, prediction, kind)
-  local button_label = report_presenter.decorate_chip_label(
-    prediction.label,
-    prediction.score,
-    state.ui.icon_mode,
-    prediction.bucket
-  )
-  local count = push_button_style(kind)
+  local label = report_presenter.decorate_chip_label(prediction.label, prediction.score)
+  local icon_key = report_presenter.label_icon_key(prediction.label, prediction.bucket)
+  local text_w, text_h = ImGui.CalcTextSize(ctx, label)
+  local icon_size = image_for(icon_key) and 18 or 0
+  local pad_x = 12
+  local pad_y = 8
+  local gap = icon_size > 0 and 8 or 0
+  local width = math.max(140, text_w + (pad_x * 2) + icon_size + gap)
+  local height = math.max(text_h, icon_size) + (pad_y * 2)
+
   ImGui.PushID(ctx, string.format("%s-%d-%s", group_id, index, prediction.label))
-  local pressed = ImGui.Button(ctx, button_label .. "##chip")
+  local pressed = ImGui.InvisibleButton(ctx, "##chip", width, height)
+  local hovered = ImGui.IsItemHovered(ctx)
+  local active = ImGui.IsItemActive(ctx)
+  local min_x, min_y = ImGui.GetItemRectMin(ctx)
+  local max_x, max_y = ImGui.GetItemRectMax(ctx)
+  local draw_list = ImGui.GetWindowDrawList(ctx)
+  local bg = chip_palette(kind, hovered, active)
+
+  ImGui.DrawList_AddRectFilled(draw_list, min_x, min_y, max_x, max_y, bg, height / 2)
+  local text_x = min_x + pad_x
+  local text_y = min_y + math.max(0, (height - text_h) / 2)
+  ImGui.DrawList_AddText(draw_list, text_x, text_y, THEME.text, label)
+  if icon_size > 0 then
+    local icon_x = max_x - pad_x - icon_size
+    local icon_y = min_y + math.max(0, (height - icon_size) / 2)
+    draw_image_icon(draw_list, icon_key, icon_x, icon_y, icon_size)
+  end
   ImGui.PopID(ctx)
-  pop_button_style(count)
   return pressed
 end
 
@@ -456,14 +501,16 @@ local function render_prediction_rows(vm, limit, show_support)
     if index > limit then
       break
     end
-    local icon = report_presenter.bucket_icon(prediction.bucket, state.ui.icon_mode)
+    local bucket_label = report_presenter.bucket_label(prediction.bucket)
     if state.focused_tag and prediction.label == state.focused_tag then
-      ImGui.TextColored(ctx, badge_color("success"), string.format("%s %s", icon, prediction.label))
+      ImGui.TextColored(ctx, badge_color("success"), prediction.label)
     else
-      ImGui.Text(ctx, string.format("%s %s", icon, prediction.label))
+      ImGui.Text(ctx, prediction.label)
     end
     ImGui.SameLine(ctx, 0, 12)
     ImGui.ProgressBar(ctx, prediction.score, 180, 0, string.format("%d%%", math.floor(prediction.score * 100 + 0.5)))
+    ImGui.SameLine(ctx, 0, 10)
+    ImGui.TextDisabled(ctx, bucket_label)
     if show_support then
       local peak_score = tonumber(prediction.peak_score) or tonumber(prediction.score) or 0
       local support_count = tonumber(prediction.support_count) or 0
@@ -477,7 +524,7 @@ local function render_highlight_pills(vm)
   if #vm.highlights == 0 then
     return
   end
-  render_icon_label("cues", "Top cues " .. report_presenter.section_emoji("cues", state.ui.icon_mode), badge_color("accent"))
+  render_image_label(report_presenter.section_icon_key("cues"), "Top cues", badge_color("accent"), 16)
   for index, row in ipairs(vm.highlights) do
     if index > report_presenter.COMPACT_HIGHLIGHT_LIMIT then
       break
@@ -489,7 +536,7 @@ local function render_highlight_pills(vm)
 end
 
 local function render_tag_pills(vm)
-  render_icon_label("tags", "Tags " .. report_presenter.section_emoji("tags", state.ui.icon_mode), badge_color("accent"))
+  render_image_label(report_presenter.section_icon_key("tags"), "Tags", badge_color("accent"), 16)
   for index, prediction in ipairs(vm.predictions) do
     if index > report_presenter.COMPACT_TAG_LIMIT then
       break
@@ -505,7 +552,7 @@ local function render_result()
 
   ImGui.TextWrapped(ctx, vm.summary)
   ImGui.Spacing(ctx)
-  render_metric_chip("success", vm.backend, "success")
+  render_metric_chip("ready", vm.backend, "success")
   ImGui.SameLine(ctx)
   render_static_chip(string.format("%d ms", vm.total_ms), "accent")
   ImGui.Spacing(ctx)
@@ -515,7 +562,7 @@ local function render_result()
   render_tag_pills(vm)
   if state.notice then
     ImGui.Spacing(ctx)
-    render_icon_label("warning", tostring(state.notice), badge_color("warning"))
+    ImGui.TextColored(ctx, badge_color("warning"), tostring(state.notice))
   end
   ImGui.Spacing(ctx)
 
@@ -541,16 +588,7 @@ local function render_result()
 
   if state.current_view == "details" then
     ImGui.Separator(ctx)
-    render_icon_label("details", "More", badge_color("accent"))
-    ImGui.SameLine(ctx)
-    ImGui.TextDisabled(ctx, "Icons:")
-    for _, mode in ipairs(report_ui_state.icon_mode_options()) do
-      ImGui.SameLine(ctx)
-      local label = mode == state.ui.icon_mode and "[" .. mode .. "]" or mode
-      if ImGui.Button(ctx, label) then
-        state.ui.icon_mode = report_ui_state.save_icon_mode(reaper, mode)
-      end
-    end
+    render_image_label("details", "More", badge_color("accent"), 16)
     if report_ui_state.focused_label(state.focused_tag) then
       ImGui.Spacing(ctx)
       ImGui.TextWrapped(ctx, "Focused tag: " .. report_ui_state.focused_label(state.focused_tag))
@@ -577,7 +615,7 @@ local function render_result()
     render_prediction_rows(vm, math.min(#vm.predictions, 12), true)
     if #vm.warnings > 0 then
       ImGui.Spacing(ctx)
-      render_icon_label("warning", "Notes", badge_color("warning"))
+      ImGui.TextColored(ctx, badge_color("warning"), "Notes")
       for _, warning in ipairs(vm.warnings) do
         ImGui.BulletText(ctx, warning)
       end
@@ -596,9 +634,7 @@ local function render_result()
 end
 
 local function render_error()
-  local error_text = report_presenter.error_report(state.result, {
-    icon_mode = state.ui.icon_mode,
-  })
+  local error_text = report_presenter.error_report(state.result)
   ImGui.TextWrapped(ctx, error_text)
   if state.result and state.result.item and state.result.item.item_position and state.result.item.item_length then
     ImGui.Spacing(ctx)
@@ -647,7 +683,7 @@ local function loop()
       elseif state.screen == "error" then
         render_error()
       else
-        ImGui.TextWrapped(ctx, "✨ Warming up...")
+        ImGui.TextWrapped(ctx, "Warming up...")
       end
     end, debug.traceback)
     if pushed_base_font then
