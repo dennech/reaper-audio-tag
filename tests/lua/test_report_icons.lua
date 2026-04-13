@@ -20,4 +20,51 @@ function tests.test_unknown_icon_returns_nil()
   luaunit.assertEquals(report_icons.icon_png_data("missing"), nil)
 end
 
+function tests.test_image_invalidates_bad_handle()
+  local cache = {
+    loaded = true,
+    available = true,
+    images = {
+      speech = { valid = false },
+    },
+  }
+  local fake_imgui = {
+    ValidatePtr = function(image, kind)
+      return kind == "ImGui_Image*" and image.valid == true
+    end,
+  }
+
+  luaunit.assertEquals(report_icons.image(fake_imgui, cache, "speech"), nil)
+  luaunit.assertEquals(cache.images.speech, nil)
+  luaunit.assertEquals(cache.loaded, false)
+  luaunit.assertEquals(cache.available, false)
+end
+
+function tests.test_ensure_loaded_recreates_invalid_handles()
+  local created = 0
+  local cache = {
+    loaded = true,
+    available = true,
+    images = {
+      speech = { valid = false },
+    },
+  }
+  local fake_imgui = {
+    ValidatePtr = function(image, kind)
+      return kind == "ImGui_Image*" and image.valid == true
+    end,
+    CreateImageFromMem = function(data)
+      created = created + 1
+      return { valid = true, data = data, id = created }
+    end,
+  }
+
+  report_icons.ensure_loaded(fake_imgui, cache)
+
+  luaunit.assertEquals(created > 0, true)
+  luaunit.assertEquals(cache.loaded, true)
+  luaunit.assertEquals(cache.available, true)
+  luaunit.assertEquals(cache.images.speech.valid, true)
+end
+
 return tests

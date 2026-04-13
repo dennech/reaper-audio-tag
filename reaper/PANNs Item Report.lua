@@ -60,7 +60,6 @@ local state = {
       loaded = false,
       images = {},
       available = false,
-      draw_failed = false,
     },
   },
 }
@@ -157,7 +156,8 @@ local function ensure_icons()
 end
 
 local function image_for(icon_key)
-  return report_icons.image(state.ui.icons, icon_key)
+  ensure_icons()
+  return report_icons.image(ImGui, state.ui.icons, icon_key)
 end
 
 local function render_inline_image(icon_key, size)
@@ -165,12 +165,20 @@ local function render_inline_image(icon_key, size)
   if not (image and ImGui.Image) then
     return false
   end
-  ImGui.Image(ctx, image, size, size)
+  local ok = pcall(ImGui.Image, ctx, image, size, size)
+  if not ok then
+    if state.ui.icons.images then
+      state.ui.icons.images[icon_key] = nil
+    end
+    state.ui.icons.available = false
+    state.ui.icons.loaded = false
+    return false
+  end
   return true
 end
 
 local function draw_image_icon(draw_list, icon_key, x, y, size)
-  if state.ui.icons.draw_failed or not ImGui.DrawList_AddImage then
+  if not ImGui.DrawList_AddImage then
     return false
   end
   local image = image_for(icon_key)
@@ -179,7 +187,11 @@ local function draw_image_icon(draw_list, icon_key, x, y, size)
   end
   local ok = pcall(ImGui.DrawList_AddImage, draw_list, image, x, y, x + size, y + size)
   if not ok then
-    state.ui.icons.draw_failed = true
+    if state.ui.icons.images then
+      state.ui.icons.images[icon_key] = nil
+    end
+    state.ui.icons.available = false
+    state.ui.icons.loaded = false
     return false
   end
   return true

@@ -127,29 +127,70 @@ function M.icon_png_data(icon_key)
   return decode_base64(encoded)
 end
 
+function M.is_valid_image(ImGui, image)
+  if not image then
+    return false
+  end
+  if not (ImGui and ImGui.ValidatePtr) then
+    return true
+  end
+  local ok, valid = pcall(ImGui.ValidatePtr, image, "ImGui_Image*")
+  return ok and valid == true
+end
+
 function M.ensure_loaded(ImGui, cache)
-  if not cache or cache.loaded then
+  if not cache then
+    return
+  end
+
+  cache.images = cache.images or {}
+  if not (ImGui and ImGui.CreateImageFromMem) then
+    cache.loaded = true
+    cache.available = false
+    return
+  end
+
+  local missing = not cache.loaded
+  cache.available = false
+  for _, name in ipairs(ORDER) do
+    local image = cache.images[name]
+    if M.is_valid_image(ImGui, image) then
+      cache.available = true
+    else
+      cache.images[name] = nil
+      missing = true
+    end
+  end
+
+  if cache.loaded and not missing then
     return
   end
 
   cache.loaded = true
-  cache.images = {}
-  cache.available = false
-  if not (ImGui and ImGui.CreateImageFromMem) then
-    return
-  end
-
   for _, name in ipairs(ORDER) do
-    local ok, image = pcall(ImGui.CreateImageFromMem, M.icon_png_data(name))
-    if ok and image then
-      cache.images[name] = image
+    if not cache.images[name] then
+      local ok, image = pcall(ImGui.CreateImageFromMem, M.icon_png_data(name))
+      if ok and M.is_valid_image(ImGui, image) then
+        cache.images[name] = image
+      end
+    end
+    if M.is_valid_image(ImGui, cache.images[name]) then
       cache.available = true
     end
   end
 end
 
-function M.image(cache, icon_key)
-  return cache and cache.images and cache.images[icon_key] or nil
+function M.image(ImGui, cache, icon_key)
+  local image = cache and cache.images and cache.images[icon_key] or nil
+  if M.is_valid_image(ImGui, image) then
+    return image
+  end
+  if cache and cache.images then
+    cache.images[icon_key] = nil
+    cache.available = false
+    cache.loaded = false
+  end
+  return nil
 end
 
 return M
