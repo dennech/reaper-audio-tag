@@ -11,7 +11,6 @@ local path_utils = require("path_utils")
 local report_icons = require("report_icons")
 local report_presenter = require("report_presenter")
 local report_run_cleanup = require("report_run_cleanup")
-local report_telemetry = require("report_telemetry")
 local report_ui_state = require("report_ui_state")
 local runtime_client = require("runtime_client")
 
@@ -41,7 +40,6 @@ path_utils.ensure_dir(paths.jobs_dir)
 report_run_cleanup.prune_stale(paths)
 
 local ctx = ImGui.CreateContext("PANNs Item Report")
-local telemetry_session_id = "ui_" .. path_utils.sanitize_job_id(reaper.genGuid(""))
 local state = {
   window_open = true,
   current_view = "compact",
@@ -63,7 +61,6 @@ local state = {
     poll_interval_ms = 100,
     view_model = nil,
     view_model_result = nil,
-    telemetry = report_telemetry.new(paths.logs_dir, telemetry_session_id),
     icons = {
       loaded = false,
       image = nil,
@@ -256,44 +253,19 @@ local function ensure_fonts()
 end
 
 local function measure_phase(name, fn)
-  return report_telemetry.measure(state.ui.telemetry, name, fn)
+  return fn()
 end
 
 local function telemetry_label(key, value)
-  report_telemetry.set_label(state.ui.telemetry, key, value)
+  return nil
 end
 
 local function telemetry_counter(key, value)
-  report_telemetry.set_counter(state.ui.telemetry, key, value)
+  return nil
 end
 
 local function telemetry_event(message)
-  report_telemetry.note(state.ui.telemetry, message)
-end
-
-local function open_log()
-  if state.result and state.result.stage == "export" and state.export_log_file and path_utils.exists(state.export_log_file) then
-    reaper.ExecProcess("open " .. path_utils.sh_quote(state.export_log_file), -2)
-    return
-  end
-  if state.run_artifacts and state.run_artifacts.runtime_log_file and path_utils.exists(state.run_artifacts.runtime_log_file) then
-    reaper.ExecProcess("open " .. path_utils.sh_quote(state.run_artifacts.runtime_log_file), -2)
-    return
-  end
-  if state.job and path_utils.exists(state.job.log_file) then
-    reaper.ExecProcess("open " .. path_utils.sh_quote(state.job.log_file), -2)
-    return
-  end
-  if state.export_log_file and path_utils.exists(state.export_log_file) then
-    reaper.ExecProcess("open " .. path_utils.sh_quote(state.export_log_file), -2)
-  end
-end
-
-local function open_debug_log()
-  local debug_log_path = report_telemetry.log_path(state.ui.telemetry)
-  if debug_log_path and path_utils.exists(debug_log_path) then
-    reaper.ExecProcess("open " .. path_utils.sh_quote(debug_log_path), -2)
-  end
+  return nil
 end
 
 local function clear_temp_audio()
@@ -474,8 +446,6 @@ local function render_header()
   ImGui.Separator(ctx)
 end
 
-local render_diagnostics_panel
-
 local function render_setup()
   telemetry_counter("tags_total", 0)
   telemetry_counter("visible_tags", 0)
@@ -501,8 +471,6 @@ local function render_setup()
       start_analysis()
     end
   end
-  ImGui.Spacing(ctx)
-  render_diagnostics_panel()
 end
 
 local function finalize_export_success(export_payload)
@@ -589,8 +557,6 @@ local function render_exporting()
     ImGui.Spacing(ctx)
     ImGui.TextDisabled(ctx, "Chunking the selected item without blocking REAPER...")
   end
-  ImGui.Spacing(ctx)
-  render_diagnostics_panel()
 end
 
 local function render_loading()
@@ -635,8 +601,6 @@ local function render_loading()
     ImGui.Spacing(ctx)
     ImGui.TextDisabled(ctx, "Still working...")
   end
-  ImGui.Spacing(ctx)
-  render_diagnostics_panel()
 end
 
 local function chip_palette(kind, hovered, active)
@@ -817,29 +781,6 @@ local function render_tag_pills(vm)
   end
 end
 
-render_diagnostics_panel = function()
-  ImGui.Separator(ctx)
-  render_image_label("details", "Diagnostics", badge_color("accent"), 16)
-  for _, line in ipairs(report_telemetry.summary_lines(state.ui.telemetry)) do
-    ImGui.TextDisabled(ctx, line)
-  end
-  if ImGui.Button(ctx, "Debug log") then
-    open_debug_log()
-  end
-  ImGui.SameLine(ctx)
-  ImGui.TextDisabled(ctx, tostring(report_telemetry.log_basename(state.ui.telemetry) or "ui-telemetry.log"))
-  if state.current_view == "details" then
-    local events = report_telemetry.event_lines(state.ui.telemetry, 6)
-    if #events > 0 then
-      ImGui.Spacing(ctx)
-      ImGui.TextColored(ctx, badge_color("warning"), "Recent slow frames")
-      for _, line in ipairs(events) do
-        ImGui.BulletText(ctx, line)
-      end
-    end
-  end
-end
-
 local function render_result()
   local vm = current_view_model()
 
@@ -875,13 +816,6 @@ local function render_result()
   if ImGui.Button(ctx, "Another") then
     start_analysis({ preserve_result_if_selection_invalid = true })
     return
-  end
-  if (state.run_artifacts and state.run_artifacts.runtime_log_file and path_utils.exists(state.run_artifacts.runtime_log_file))
-    or (state.job and path_utils.exists(state.job.log_file)) then
-    ImGui.SameLine(ctx)
-    if ImGui.Button(ctx, "Log") then
-      open_log()
-    end
   end
 
   if state.current_view == "details" then
@@ -931,8 +865,6 @@ local function render_result()
     ImGui.Spacing(ctx)
     ImGui.TextDisabled(ctx, "Clip tags only, not events.")
   end
-  ImGui.Spacing(ctx)
-  render_diagnostics_panel()
 end
 
 local function render_error()
@@ -961,16 +893,6 @@ local function render_error()
   if ImGui.Button(ctx, "Bootstrap") then
     runtime_client.open_bootstrap(paths)
   end
-  if (state.run_artifacts and state.run_artifacts.runtime_log_file and path_utils.exists(state.run_artifacts.runtime_log_file))
-    or (state.job and path_utils.exists(state.job.log_file))
-    or (state.export_log_file and path_utils.exists(state.export_log_file)) then
-    ImGui.SameLine(ctx)
-    if ImGui.Button(ctx, "Open log") then
-      open_log()
-    end
-  end
-  ImGui.Spacing(ctx)
-  render_diagnostics_panel()
 end
 
 local function loop()
@@ -981,9 +903,7 @@ local function loop()
   local visible, open = ImGui.Begin(ctx, "PANNs Item Report", state.window_open, ImGui.WindowFlags_NoCollapse())
   state.window_open = open
   if visible then
-    report_telemetry.begin_frame(state.ui.telemetry, state.screen)
     report_icons.begin_frame(state.ui.icons)
-    telemetry_label("current_view", state.current_view)
     local pushed_base_font = push_font(state.ui.base_font, 15)
     local ok, err = xpcall(function()
       measure_phase("render_content", function()
@@ -1003,15 +923,6 @@ local function loop()
         end
       end)
     end, debug.traceback)
-    local icon_stats = report_icons.frame_stats(state.ui.icons)
-    telemetry_counter("icon_lookups", icon_stats.image_calls or 0)
-    telemetry_counter("icon_draws", icon_stats.draw_calls or 0)
-    telemetry_counter("icon_misses", icon_stats.misses or 0)
-    telemetry_counter("icon_invalidations", icon_stats.invalidations or 0)
-    telemetry_counter("icon_atlas_loads", icon_stats.atlas_loads or 0)
-    telemetry_counter("icon_text_fallbacks", icon_stats.text_fallbacks or 0)
-    telemetry_counter("icon_validates", icon_stats.validate_calls or 0)
-    report_telemetry.finish_frame(state.ui.telemetry)
     if pushed_base_font then
       ImGui.PopFont(ctx)
     end

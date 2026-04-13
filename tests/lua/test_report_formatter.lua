@@ -226,15 +226,16 @@ function tests.test_main_script_uses_unique_ids_for_clickable_tags()
   luaunit.assertStrContains(source, "report_ui_state.focus_tag(state")
 end
 
-function tests.test_main_script_exposes_open_log_for_export_failures()
+function tests.test_main_script_keeps_export_diagnostics_without_exposing_log_buttons()
   local handle = assert(io.open("reaper/PANNs Item Report.lua", "rb"))
   local source = handle:read("*a")
   handle:close()
 
   luaunit.assertStrContains(source, "state.export_log_file")
-  luaunit.assertStrContains(source, 'ImGui.Button(ctx, "Open log")')
   luaunit.assertStrContains(source, "audio_export.begin_export_selected_item(export_path, {")
   luaunit.assertStrContains(source, "diagnostics_path = export_log_path")
+  luaunit.assertEquals(source:find('ImGui.Button(ctx, "Open log")', 1, true), nil)
+  luaunit.assertEquals(source:find('ImGui.Button(ctx, "Log")', 1, true), nil)
 end
 
 function tests.test_debug_export_script_loads()
@@ -344,10 +345,11 @@ function tests.test_main_script_stops_live_job_after_result_and_keeps_log_artifa
 
   luaunit.assertStrContains(source, "set_result(polled.payload)")
   luaunit.assertStrContains(source, "state.job = nil")
-  luaunit.assertStrContains(source, "state.run_artifacts.runtime_log_file")
+  luaunit.assertStrContains(source, "state.run_artifacts = report_run_cleanup.new_artifacts(export_path, export_log_path, job)")
   luaunit.assertStrContains(source, "local function set_result(result)")
   luaunit.assertStrContains(source, "local function current_view_model()")
-  luaunit.assertStrContains(source, 'ImGui.Button(ctx, "Open log")')
+  luaunit.assertEquals(source:find('ImGui.Button(ctx, "Open log")', 1, true), nil)
+  luaunit.assertEquals(source:find('ImGui.Button(ctx, "Log")', 1, true), nil)
 end
 
 function tests.test_main_script_uses_async_export_session_before_runtime_job()
@@ -380,24 +382,19 @@ function tests.test_main_script_renders_full_tag_flow_with_bucket_palette()
   luaunit.assertStrContains(source, "weak = { 0xF8C0D0FF")
 end
 
-function tests.test_main_script_exposes_debug_telemetry_panel_and_log()
+function tests.test_main_script_hides_temporary_diagnostics_ui()
   local handle = assert(io.open("reaper/PANNs Item Report.lua", "rb"))
   local source = handle:read("*a")
   handle:close()
-  local telemetry_handle = assert(io.open("reaper/lib/report_telemetry.lua", "rb"))
-  local telemetry_source = telemetry_handle:read("*a")
-  telemetry_handle:close()
 
-  luaunit.assertStrContains(source, 'require("report_telemetry")')
-  luaunit.assertStrContains(source, "report_telemetry.new(paths.logs_dir")
-  luaunit.assertStrContains(source, 'render_image_label("details", "Diagnostics"')
-  luaunit.assertStrContains(source, 'ImGui.Button(ctx, "Debug log")')
-  luaunit.assertStrContains(source, "report_telemetry.summary_lines(state.ui.telemetry)")
-  luaunit.assertStrContains(source, "report_telemetry.event_lines(state.ui.telemetry, 6)")
   luaunit.assertStrContains(source, "report_icons.begin_frame(state.ui.icons)")
-  luaunit.assertStrContains(source, "report_telemetry.finish_frame(state.ui.telemetry)")
-  luaunit.assertStrContains(telemetry_source, "report_ui_telemetry_v1")
-  luaunit.assertStrContains(telemetry_source, "frame=%d stage=%s")
+  luaunit.assertEquals(source:find('require("report_telemetry")', 1, true), nil)
+  luaunit.assertEquals(source:find("report_telemetry.new(paths.logs_dir", 1, true), nil)
+  luaunit.assertEquals(source:find('render_image_label("details", "Diagnostics"', 1, true), nil)
+  luaunit.assertEquals(source:find('ImGui.Button(ctx, "Debug log")', 1, true), nil)
+  luaunit.assertEquals(source:find("report_telemetry.summary_lines", 1, true), nil)
+  luaunit.assertEquals(source:find("report_telemetry.event_lines", 1, true), nil)
+  luaunit.assertEquals(source:find("report_telemetry.finish_frame", 1, true), nil)
 end
 
 return tests
