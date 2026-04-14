@@ -1,11 +1,18 @@
 -- @description REAPER Audio Tag
--- @version 0.3.0
--- @author Project contributors
+-- @version 0.3.1
+-- @author dennech
 -- @link https://github.com/dennech/reaper-audio-tag
 -- @screenshot https://raw.githubusercontent.com/dennech/reaper-audio-tag/main/docs/images/reaper-audio-tag-hero.png
+-- @about
+--   `REAPER Audio Tag` is a macOS-only REAPER action for local clip-level audio tagging.
+--
+--   ReaPack installs the Lua UI and the project's shipped Python source only.
+--   You install Python 3.11, the Python dependencies, and `Cnn14_mAP=0.431.pth` yourself.
+--
+--   Run `REAPER Audio Tag: Configure` to validate the Python and model paths before analysis.
 -- @provides
 --   [main] REAPER Audio Tag - Configure.lua
---   [main] REAPER Audio Tag - Setup.lua
+--   [nomain] REAPER Audio Tag - Setup.lua
 --   [nomain] REAPER Audio Tag - Debug Export.lua
 --   [nomain] PANNs Item Report.lua
 --   [nomain] PANNs Item Report - Debug Export.lua

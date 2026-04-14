@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1
+
+- Bumped the ReaPack package version so fresh installs and updates no longer reuse the stale `0.3.0` action surface.
+- Hid `REAPER Audio Tag: Setup` from the public ReaPack action list while keeping the file installed as a compatibility shim that redirects into `Configure`.
+- Added explicit ReaPack package author/about metadata so the published package shows the maintainer and the transparent manual setup model inside ReaPack.
+
 ## 0.3.0
 
 - Replaced the public in-REAPER installer flow with a transparent manual macOS setup flow centered on `REAPER Audio Tag: Configure`.

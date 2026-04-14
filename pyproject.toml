@@ -4,13 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "reaper-panns-item-report"
-version = "0.3.0"
+version = "0.3.1"
 description = "REAPER item analysis report powered by PANNs Cnn14."
 readme = "README.md"
 requires-python = ">=3.11,<3.12"
 license = {text = "MIT"}
 authors = [
-  {name = "Project contributors"},
+  {name = "dennech"},
 ]
 dependencies = [
   "numpy>=1.26,<2.0",

@@ -1,6 +1,7 @@
+-- @noindex
 -- @description REAPER Audio Tag: Setup (Deprecated)
--- @version 0.3.0
--- @author Project contributors
+-- @version 0.3.1
+-- @author dennech
 -- @link https://github.com/dennech/reaper-audio-tag
 
 local _, script_path = reaper.get_action_context()
