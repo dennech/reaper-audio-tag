@@ -261,6 +261,7 @@ end
 
 function tests.test_reapack_metadata_hides_setup_from_public_action_surface()
   local main_source = assert(path_utils.read_file("reaper/REAPER Audio Tag.lua"))
+  local configure_source = assert(path_utils.read_file("reaper/REAPER Audio Tag - Configure.lua"))
   local setup_source = assert(path_utils.read_file("reaper/REAPER Audio Tag - Setup.lua"))
   local index_source = assert(path_utils.read_file("index.xml"))
 
@@ -270,12 +271,13 @@ function tests.test_reapack_metadata_hides_setup_from_public_action_surface()
   luaunit.assertStrContains(main_source, "[nomain] REAPER Audio Tag - Setup.lua")
   luaunit.assertEquals(main_source:find("%[main%] REAPER Audio Tag %- Setup%.lua", 1, false) ~= nil, false)
 
+  luaunit.assertStrContains(configure_source, "-- @noindex")
   luaunit.assertStrContains(setup_source, "-- @noindex")
   luaunit.assertStrContains(setup_source, '_G.REAPER_AUDIO_TAG_START_MODE = "configure"')
   luaunit.assertEquals(setup_source:find("setup_runtime", 1, true) ~= nil, false)
 
   luaunit.assertStrContains(index_source, '<version name="0.3.1" author="dennech"')
-  luaunit.assertStrContains(index_source, '<about><![CDATA[')
+  luaunit.assertStrContains(index_source, '<description><![CDATA[{\\rtf1')
   luaunit.assertStrContains(index_source, 'main="main" file="REAPER Audio Tag - Configure.lua"')
   luaunit.assertStrContains(index_source, '<source file="REAPER Audio Tag - Setup.lua">')
   luaunit.assertEquals(index_source:find('main="main" file="REAPER Audio Tag %- Setup%.lua"', 1, false) ~= nil, false)

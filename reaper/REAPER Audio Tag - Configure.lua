@@ -1,3 +1,4 @@
+-- @noindex
 -- @description REAPER Audio Tag: Configure
 -- @version 0.3.1
 -- @author dennech
