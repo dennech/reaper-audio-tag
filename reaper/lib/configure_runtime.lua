@@ -4,7 +4,7 @@ local path_utils = require("path_utils")
 local M = {}
 
 M.CONFIG_SCHEMA = "reaper-audio-tag/config/v1"
-M.PACKAGE_VERSION = "0.3.5"
+M.PACKAGE_VERSION = "0.3.6"
 M.MODEL_FILENAME = "Cnn14_mAP=0.431.pth"
 M.MODEL_SHA256 = "0dc499e40e9761ef5ea061ffc77697697f277f6a960894903df3ada000e34b31"
 M.MODEL_SIZE_BYTES = 327428481
@@ -145,7 +145,7 @@ function M.runtime_status(paths, deps)
     return {
       ok = true,
       level = "warning",
-      message = "Using legacy runtime source from REAPER/Data/runtime/src. v0.3.5 will still use it, but reinstalling from this repo's ReaPack URL should move it into REAPER/Data/reaper-panns-item-report/runtime/src.",
+      message = "Using legacy runtime source from REAPER/Data/runtime/src. v0.3.6 will still use it, but reinstalling from this repo's ReaPack URL should move it into REAPER/Data/reaper-panns-item-report/runtime/src.",
       source_root = source_root,
       origin = origin,
     }

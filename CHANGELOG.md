@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.5
+## 0.3.6
 
 - Fixed ReaPack `data` handling by making the canonical shipped runtime path `REAPER/Data/reaper-panns-item-report/runtime/src/...` instead of looking inside `Scripts/...`.
 - Kept one-release compatibility with the accidental legacy install path `REAPER/Data/runtime/src/...` from `v0.3.4`, so existing users can still validate and run before reinstalling.
