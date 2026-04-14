@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -16,6 +17,10 @@ def _run_cli(*args: str) -> subprocess.CompletedProcess[str]:
         check=False,
         text=True,
         capture_output=True,
+        env={
+            **os.environ,
+            "PYTHONPATH": str(Path.cwd() / "reaper" / "runtime" / "src"),
+        },
     )
 
 
