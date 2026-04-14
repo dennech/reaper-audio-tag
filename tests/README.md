@@ -4,7 +4,7 @@ This directory contains the repository test scaffold for `REAPER Audio Tag v1`.
 
 ## Layout
 
-- `tests/python`: Python tests for fixtures, contracts, and the real `reaper_panns_runtime` source tree under `reaper/runtime/src`.
+- `tests/python`: Python tests for fixtures, contracts, and the real `reaper_panns_runtime` source tree under `reaper/reaper-panns-item-report/runtime/src`.
 - `tests/lua`: pure Lua report presenter tests plus snapshot checks.
 - `tests/integration`: cross-language checks that connect the runtime CLI fake mode with the Lua report layer.
 - `tests/scripts`: local runners and deterministic fixture generation.

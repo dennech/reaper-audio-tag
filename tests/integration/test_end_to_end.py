@@ -58,7 +58,7 @@ def test_runtime_cli_fake_mode_and_lua_runner_work_together() -> None:
             capture_output=True,
             env={
                 **os.environ,
-                "PYTHONPATH": str(Path.cwd() / "reaper" / "runtime" / "src"),
+                "PYTHONPATH": str(Path.cwd() / "reaper" / "reaper-panns-item-report" / "runtime" / "src"),
                 "REAPER_RESOURCE_PATH": str(resource_dir),
                 "REAPER_PANNS_REPO_ROOT": str(repo_root),
                 "REAPER_PANNS_FAKE_MODEL": "1",

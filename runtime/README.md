@@ -20,7 +20,7 @@ These notes are internal and developer-facing. Normal users should follow the to
 
 ## Notes
 
-- The runtime package lives under `reaper/runtime/src/reaper_panns_runtime`.
+- The runtime package lives under `reaper/reaper-panns-item-report/runtime/src/reaper_panns_runtime`.
 - Public users are expected to install Python, third-party dependencies, and the model file explicitly, then point `REAPER Audio Tag: Configure` at those paths.
 - Development and recovery tooling can still use `bootstrap` and `.local-models/` for local checkouts.
 - The fake model path exists to keep tests and contract validation lightweight.

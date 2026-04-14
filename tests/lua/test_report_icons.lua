@@ -6,7 +6,7 @@ local tests = {}
 
 local function shipped_labels()
   local labels = {}
-  local handle = assert(io.open("reaper/runtime/src/reaper_panns_runtime/_vendor/metadata/class_labels_indices.csv", "rb"))
+  local handle = assert(io.open("reaper/reaper-panns-item-report/runtime/src/reaper_panns_runtime/_vendor/metadata/class_labels_indices.csv", "rb"))
   for line in handle:lines() do
     if not line:match("^index,") then
       local quoted = line:match('^%d+,[^,]+,"(.*)"$')

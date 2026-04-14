@@ -19,7 +19,7 @@ def _run_cli(*args: str) -> subprocess.CompletedProcess[str]:
         capture_output=True,
         env={
             **os.environ,
-            "PYTHONPATH": str(Path.cwd() / "reaper" / "runtime" / "src"),
+            "PYTHONPATH": str(Path.cwd() / "reaper" / "reaper-panns-item-report" / "runtime" / "src"),
         },
     )
 

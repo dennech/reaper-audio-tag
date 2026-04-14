@@ -29,15 +29,15 @@ dev = [
 reaper-panns-runtime = "reaper_panns_runtime.cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["reaper/runtime/src/reaper_panns_runtime"]
+packages = ["reaper/reaper-panns-item-report/runtime/src/reaper_panns_runtime"]
 include = [
-  "reaper/runtime/src/reaper_panns_runtime/_vendor/metadata/*.csv",
-  "reaper/runtime/src/reaper_panns_runtime/_vendor/panns/LICENSE.MIT",
+  "reaper/reaper-panns-item-report/runtime/src/reaper_panns_runtime/_vendor/metadata/*.csv",
+  "reaper/reaper-panns-item-report/runtime/src/reaper_panns_runtime/_vendor/panns/LICENSE.MIT",
 ]
 
 [tool.hatch.build.targets.sdist]
 include = [
-  "/reaper/runtime/src/reaper_panns_runtime",
+  "/reaper/reaper-panns-item-report/runtime/src/reaper_panns_runtime",
   "/runtime/README.md",
   "/runtime/docs",
   "/reaper",
@@ -51,7 +51,7 @@ include = [
 
 [tool.pytest.ini_options]
 pythonpath = [
-  "reaper/runtime/src",
+  "reaper/reaper-panns-item-report/runtime/src",
 ]
 testpaths = [
   "tests/python",

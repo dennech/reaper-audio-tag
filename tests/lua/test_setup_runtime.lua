@@ -479,7 +479,7 @@ function tests.test_app_paths_build_falls_back_to_checkout_runtime_source()
   local resource_dir = path_utils.join(root, "Library", "Application Support", "REAPER")
   local repo_root = path_utils.join(root, "checkout")
   local script_dir = path_utils.join(repo_root, "reaper")
-  local checkout_runtime_source = path_utils.join(repo_root, "reaper", "runtime", "src")
+  local checkout_runtime_source = path_utils.join(repo_root, "reaper", "reaper-panns-item-report", "runtime", "src")
   local script_path = path_utils.join(script_dir, "REAPER Audio Tag.lua")
 
   path_utils.ensure_dir(checkout_runtime_source)
