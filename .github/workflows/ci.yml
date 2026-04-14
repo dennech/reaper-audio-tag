@@ -21,14 +21,14 @@ jobs:
           python3 -m pip install --upgrade pip
           python3 -m pip install "numpy>=1.26,<2.0" "soundfile>=0.12,<1.0" "pytest>=8.2,<9.0"
 
-      - name: Set up Lua
+      - name: Set up Lua and pandoc
         run: |
-          brew install lua
+          brew install lua pandoc
 
       - name: Set up ReaPack index tooling
         run: |
           gem install reapack-index -v 1.2.6 --user-install
-          echo "$(ruby -e 'require \"rubygems\"; print File.join(Gem.user_dir, \"bin\")')" >> "$GITHUB_PATH"
+          echo "$(ruby -e 'require "rubygems"; print File.join(Gem.user_dir, "bin")')" >> "$GITHUB_PATH"
 
       - name: Validate ReaPack metadata
         run: |

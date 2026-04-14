@@ -211,7 +211,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="reaper-panns-runtime")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    bootstrap_parser = subparsers.add_parser("bootstrap", help="Prepare runtime directories, model, and config.")
+    bootstrap_parser = subparsers.add_parser(
+        "bootstrap",
+        help="Internal dev/recovery command that prepares managed runtime directories, model, and config.",
+    )
     bootstrap_parser.add_argument("--preferred-backend", default="auto", choices=["auto", "mps", "cpu"])
     bootstrap_parser.add_argument("--force-download", action="store_true")
     bootstrap_parser.add_argument("--output")

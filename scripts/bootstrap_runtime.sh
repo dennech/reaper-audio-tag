@@ -2,6 +2,9 @@
 set -euo pipefail
 umask 077
 
+# Internal developer/recovery helper.
+# Public users should install via ReaPack and use REAPER Audio Tag: Configure.
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
@@ -36,6 +39,7 @@ export REAPER_PANNS_REPO_ROOT="${REPO_ROOT}"
 "${VENV_DIR}/bin/reaper-panns-runtime" bootstrap "$@"
 
 echo
-echo "Bootstrap complete."
+echo "Developer bootstrap complete."
+echo "This helper is for internal development/recovery use, not the public ReaPack install flow."
 echo "REAPER config: ${APP_DIR}/config.json"
 echo "Add reaper/REAPER Audio Tag.lua to REAPER Actions and run it on a selected audio item."

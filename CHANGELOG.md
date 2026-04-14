@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.3
+
+- Fixed GitHub Actions `tests / macos-tests` by correcting the Ruby `Gem.user_dir` path setup and installing `pandoc` before `reapack-index --check`.
+- Kept `REAPER Audio Tag: Configure` as the only public setup path, while clearly relegating the remaining bootstrap scripts and runtime bootstrap CLI/docs to internal developer and recovery use.
+- Removed the obsolete root-level `security_best_practices_report.md` file and finished the public cleanup around the transparent manual ReaPack install flow.
+
 ## 0.3.2
 
 - Fixed the ReaPack package so fresh installs include `runtime/src/reaper_panns_runtime/...` instead of only the Lua files under `reaper/...`.
