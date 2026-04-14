@@ -4,7 +4,7 @@ local path_utils = require("path_utils")
 local M = {}
 
 M.CONFIG_SCHEMA = "reaper-audio-tag/config/v1"
-M.PACKAGE_VERSION = "0.3.3"
+M.PACKAGE_VERSION = "0.3.4"
 M.MODEL_FILENAME = "Cnn14_mAP=0.431.pth"
 M.MODEL_SHA256 = "0dc499e40e9761ef5ea061ffc77697697f277f6a960894903df3ada000e34b31"
 M.MODEL_SIZE_BYTES = 327428481
@@ -117,7 +117,7 @@ end
 
 local function runtime_missing_message()
   return string.format(
-    "The installed ReaPack package is incomplete. Run Extensions -> ReaPack -> Synchronize packages, update REAPER Audio Tag to v%s or newer, then reopen Configure.",
+    "The installed ReaPack package is incomplete. It should contain reaper/runtime/src/... Run Extensions -> ReaPack -> Synchronize packages, update REAPER Audio Tag to v%s or newer, then reopen Configure.",
     M.PACKAGE_VERSION
   )
 end
@@ -236,7 +236,7 @@ local function python_validation_result(path_value)
   return {
     path = path_value,
     ok = false,
-    message = "Choose the python or python3.11 executable file, for example .../venv/bin/python.",
+    message = "Choose the python or python3.11 executable file. A local .../venv/bin/python is recommended; /opt/homebrew/bin/python3.11 also works if it has the required packages.",
     version = nil,
     version_string = nil,
     versions = {},

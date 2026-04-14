@@ -1,6 +1,6 @@
 -- @noindex
 -- @description REAPER Audio Tag: Setup (Deprecated)
--- @version 0.3.3
+-- @version 0.3.4
 -- @author dennech
 -- @link https://github.com/dennech/reaper-audio-tag
 

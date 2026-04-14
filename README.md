@@ -278,7 +278,7 @@ python -m pip install \
 - Open `Extensions -> ReaPack -> Synchronize packages`.
 - Update `REAPER Audio Tag` to the latest version.
 - Reopen `REAPER Audio Tag: Configure`.
-- If the installed package still has only `reaper/...` files but no `runtime/src/...`, reinstall the package from this repo's ReaPack URL.
+- If the installed package still has only `reaper/...` files but no `reaper/runtime/src/...`, reinstall the package from this repo's ReaPack URL.
 
 ### The model file is rejected
 

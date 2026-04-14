@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.4
+
+- Fixed fresh ReaPack installs by moving the shipped runtime source into the canonical package tree under `reaper/runtime/src/...`.
+- Matched the Lua runtime lookup and `Configure` validation to the real installed layout, so correct installs no longer fail with a false incomplete-package warning.
+- Added install-realistic packaging regression coverage for `app_paths`, `index.xml`, and the published runtime file paths.
+
 ## 0.3.3
 
 - Fixed GitHub Actions `tests / macos-tests` by correcting the Ruby `Gem.user_dir` path setup and installing `pandoc` before `reapack-index --check`.

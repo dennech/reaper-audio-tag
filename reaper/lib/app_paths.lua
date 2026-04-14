@@ -20,7 +20,7 @@ function M.build()
   local repo_root = path_utils.dirname(script_dir())
   local data_dir = path_utils.join(resource_dir(), "Data", "reaper-panns-item-report")
   local packaged_runtime_source = path_utils.join(script_dir(), "runtime", "src")
-  local checkout_runtime_source = path_utils.join(repo_root, "runtime", "src")
+  local checkout_runtime_source = path_utils.join(repo_root, "reaper", "runtime", "src")
   local runtime_source_root = path_utils.directory_exists(packaged_runtime_source) and packaged_runtime_source or checkout_runtime_source
   local os_name = reaper.GetOS()
 

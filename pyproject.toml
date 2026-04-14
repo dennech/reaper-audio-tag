@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "reaper-panns-item-report"
-version = "0.3.3"
+version = "0.3.4"
 description = "REAPER item analysis report powered by PANNs Cnn14."
 readme = "README.md"
 requires-python = ">=3.11,<3.12"
@@ -29,15 +29,15 @@ dev = [
 reaper-panns-runtime = "reaper_panns_runtime.cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["runtime/src/reaper_panns_runtime"]
+packages = ["reaper/runtime/src/reaper_panns_runtime"]
 include = [
-  "runtime/src/reaper_panns_runtime/_vendor/metadata/*.csv",
-  "runtime/src/reaper_panns_runtime/_vendor/panns/LICENSE.MIT",
+  "reaper/runtime/src/reaper_panns_runtime/_vendor/metadata/*.csv",
+  "reaper/runtime/src/reaper_panns_runtime/_vendor/panns/LICENSE.MIT",
 ]
 
 [tool.hatch.build.targets.sdist]
 include = [
-  "/runtime/src/reaper_panns_runtime",
+  "/reaper/runtime/src/reaper_panns_runtime",
   "/runtime/README.md",
   "/runtime/docs",
   "/reaper",
@@ -51,7 +51,7 @@ include = [
 
 [tool.pytest.ini_options]
 pythonpath = [
-  "runtime/src",
+  "reaper/runtime/src",
 ]
 testpaths = [
   "tests/python",

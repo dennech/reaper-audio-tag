@@ -45,7 +45,7 @@ def repo_root() -> Path:
     override = os.environ.get("REAPER_PANNS_REPO_ROOT")
     if override:
         return Path(override).expanduser().resolve()
-    return Path(__file__).resolve().parents[3]
+    return Path(__file__).resolve().parents[4]
 
 
 def package_root() -> Path:

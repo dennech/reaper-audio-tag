@@ -1,5 +1,5 @@
 -- @description REAPER Audio Tag
--- @version 0.3.3
+-- @version 0.3.4
 -- @author dennech
 -- @link https://github.com/dennech/reaper-audio-tag
 -- @screenshot https://raw.githubusercontent.com/dennech/reaper-audio-tag/main/docs/images/reaper-audio-tag-hero.png
@@ -11,20 +11,20 @@
 --
 --   Run `REAPER Audio Tag: Configure` to validate the Python and model paths before analysis.
 -- @changelog
---   - Fixed GitHub Actions metadata validation by correcting the Ruby path setup and installing `pandoc` on the macOS runner.
---   - Kept `Configure` as the only public setup path and clarified that the remaining bootstrap helpers are internal dev/recovery tools.
---   - Removed the obsolete root-level security audit report and completed the ReaPack/public docs cleanup for the manual setup flow.
+--   - Fixed fresh ReaPack installs by moving the shipped runtime source into the canonical package tree under `reaper/runtime/src/...`.
+--   - Matched the Lua runtime lookup to the real installed layout and improved `Configure` guidance for incomplete packages vs Python issues.
+--   - Added install-realistic packaging regression coverage so ReaPack layout mismatches are caught before release.
 -- @provides
 --   [main] REAPER Audio Tag - Configure.lua
 --   [nomain] REAPER Audio Tag - Debug Export.lua
 --   [nomain] PANNs Item Report.lua
 --   [nomain] PANNs Item Report - Debug Export.lua
 --   [nomain] lib/*.lua
---   [data] ../runtime/src/reaper_panns_runtime/*.py
---   [data] ../runtime/src/reaper_panns_runtime/_vendor/*.py
---   [data] ../runtime/src/reaper_panns_runtime/_vendor/panns/*.py
---   [data] ../runtime/src/reaper_panns_runtime/_vendor/metadata/*.csv
---   [data] ../runtime/src/reaper_panns_runtime/_vendor/panns/LICENSE.MIT
+--   [data] runtime/src/reaper_panns_runtime/*.py
+--   [data] runtime/src/reaper_panns_runtime/_vendor/*.py
+--   [data] runtime/src/reaper_panns_runtime/_vendor/panns/*.py
+--   [data] runtime/src/reaper_panns_runtime/_vendor/metadata/*.csv
+--   [data] runtime/src/reaper_panns_runtime/_vendor/panns/LICENSE.MIT
 
 local _, script_path = reaper.get_action_context()
 local script_dir = script_path:match("^(.*[\\/])") or "."
@@ -650,7 +650,10 @@ local function render_configure()
           and "Shipped runtime source is present."
           or configure_runtime.runtime_missing_message(),
     },
-    python = { ok = false, message = "Choose the python or python3.11 executable file, for example .../venv/bin/python." },
+    python = {
+      ok = false,
+      message = "Choose the python or python3.11 executable file. Prefer a local .../venv/bin/python; /opt/homebrew/bin/python3.11 also works if it has the required packages.",
+    },
     model = { ok = false, message = "Choose the file Cnn14_mAP=0.431.pth, not the folder that contains it." },
   }
   ImGui.TextColored(
@@ -669,7 +672,7 @@ local function render_configure()
     end
   )
   state.configure.python_path = updated_python_path
-  ImGui.TextDisabled(ctx, "Choose the executable file, for example .../venv/bin/python or /opt/homebrew/bin/python3.11.")
+  ImGui.TextDisabled(ctx, "Choose the executable file. Prefer .../venv/bin/python; /opt/homebrew/bin/python3.11 also works if it has numpy, soundfile, torch, torchaudio, and torchlibrosa.")
   ImGui.Spacing(ctx)
   local updated_model_path, model_changed = render_path_row(
     "Model file",

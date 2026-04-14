@@ -71,7 +71,7 @@ shasum -a 256 /path/to/Cnn14_mAP=0.431.pth
 - Открой `Extensions -> ReaPack -> Synchronize packages`.
 - Обнови `REAPER Audio Tag` до последней версии из ReaPack URL этого проекта.
 - Снова открой `REAPER Audio Tag: Configure`.
-- Если в установленном пакете по-прежнему есть только `reaper/...`, но нет `runtime/src/...`, переустанови пакет через ReaPack.
+- Если в установленном пакете по-прежнему есть только `reaper/...`, но нет `reaper/runtime/src/...`, переустанови пакет через ReaPack.
 
 ## Первый запуск медленный
 
