@@ -155,7 +155,7 @@ function tests.test_current_index_has_no_configure_setup_or_python_runtime_when_
   luaunit.assertEquals(block:find("runtime/src", 1, true) ~= nil, false)
   luaunit.assertStrContains(block, "class_labels_indices.csv")
   luaunit.assertStrContains(block, "reaper-audio-tag-backend")
-  luaunit.assertStrContains(block, "ONNX model download")
+  luaunit.assertStrContains(block, "CPU/GPU compute mode")
   luaunit.assertStrContains(block, "releases/download/v0.4.5/reaper-audio-tag-backend-macos-arm64")
   luaunit.assertStrContains(block, "releases/download/v0.4.5/reaper-audio-tag-backend-macos-x86_64")
   luaunit.assertStrContains(block, "releases/download/v0.4.5/reaper-audio-tag-backend-windows-x64.exe")
