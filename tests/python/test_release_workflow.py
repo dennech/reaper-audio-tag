@@ -41,7 +41,18 @@ def test_release_workflow_uploads_only_built_release_assets_to_selected_tag() ->
     assert "files: release-assets/*" in workflow
     assert "tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}" in workflow
     assert "overwrite_files: true" in workflow
-    assert "Attach cnn14_waveform_clipwise_opset17.onnx" in workflow
+
+
+def test_release_workflow_uploads_verified_model_asset_to_selected_tag() -> None:
+    workflow = _read(".github/workflows/release.yml")
+
+    assert "MODEL_FILENAME: cnn14_waveform_clipwise_opset17.onnx" in workflow
+    assert "MODEL_SOURCE_TAG: v0.4.4" in workflow
+    assert 'gh release download "${MODEL_SOURCE_TAG}"' in workflow
+    assert 'actual_size="$(wc -c < "release-assets/${MODEL_FILENAME}"' in workflow
+    assert 'echo "${MODEL_SHA256}  release-assets/${MODEL_FILENAME}" | sha256sum -c -' in workflow
+    assert "files: release-assets/cnn14_waveform_clipwise_opset17.onnx" in workflow
+    assert "Attach cnn14_waveform_clipwise_opset17.onnx" not in workflow
 
 
 def test_project_backend_lua_and_model_urls_use_the_same_release_version() -> None:

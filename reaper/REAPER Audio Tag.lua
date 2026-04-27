@@ -1,5 +1,5 @@
 -- @description REAPER Audio Tag
--- @version 0.4.4
+-- @version 0.4.5
 -- @author dennech
 -- @link https://github.com/dennech/reaper-audio-tag
 -- @screenshot https://raw.githubusercontent.com/dennech/reaper-audio-tag/main/docs/images/reaper-audio-tag-hero.png
@@ -11,8 +11,9 @@
 --
 --   No user-managed Python, venv, or manual model file selection is required.
 -- @changelog
---   - Hardened the backend so stale Lua instances cannot pass an unsafe CoreML cache path and force a CPU fallback.
---   - Kept the first-run ONNX model download flow and release assets unchanged.
+--   - Show the plugin version in the window title and header.
+--   - Show CPU/GPU compute mode in reports instead of internal backend names.
+--   - Prefer platform-specific ReaPack backend files over stale generic fallback binaries.
 -- @provides
 --   [nomain] REAPER Audio Tag - Debug Export.lua
 --   [nomain] PANNs Item Report.lua
@@ -64,12 +65,14 @@ path_utils.ensure_dir(paths.tmp_dir)
 path_utils.ensure_dir(paths.jobs_dir)
 report_run_cleanup.prune_stale(paths)
 
+local PLUGIN_VERSION = "0.4.5"
+local APP_TITLE = "REAPER Audio Tag v" .. PLUGIN_VERSION
 local start_mode = _G.REAPER_AUDIO_TAG_START_MODE or "report"
 local start_message = _G.REAPER_AUDIO_TAG_OPEN_MESSAGE
 _G.REAPER_AUDIO_TAG_START_MODE = nil
 _G.REAPER_AUDIO_TAG_OPEN_MESSAGE = nil
 
-local ctx = ImGui.CreateContext("REAPER Audio Tag")
+local ctx = ImGui.CreateContext(APP_TITLE)
 local state = {
   window_open = true,
   current_view = "compact",
@@ -519,7 +522,7 @@ local function render_header()
   if render_inline_image("brand", 20) then
     ImGui.SameLine(ctx, 0, 8)
   end
-  ImGui.TextColored(ctx, badge_color("accent"), "REAPER Audio Tag")
+  ImGui.TextColored(ctx, badge_color("accent"), APP_TITLE)
   ImGui.SameLine(ctx, 0, 16)
   render_metric_chip(chip_icon, chip_label, chip_kind)
   ImGui.Separator(ctx)
@@ -971,7 +974,7 @@ local function render_result()
 
   ImGui.TextWrapped(ctx, vm.summary)
   ImGui.Spacing(ctx)
-  render_metric_chip("ready", vm.backend, "success")
+  render_metric_chip("ready", vm.compute, "success")
   ImGui.SameLine(ctx)
   render_static_chip(string.format("%d ms", vm.total_ms), "accent")
   ImGui.Spacing(ctx)
@@ -1039,9 +1042,9 @@ local function render_result()
         ImGui.BulletText(ctx, warning)
       end
     end
-    if #vm.attempted_backends > 0 then
+    if #vm.attempted_compute > 0 then
       ImGui.Spacing(ctx)
-      ImGui.TextWrapped(ctx, "Tried: " .. table.concat(vm.attempted_backends, " -> "))
+      ImGui.TextWrapped(ctx, "Tried: " .. table.concat(vm.attempted_compute, " -> "))
     end
     if vm.model_status.name or vm.model_status.source then
       ImGui.Spacing(ctx)
@@ -1085,7 +1088,7 @@ local function loop()
   ensure_started()
   ImGui.SetNextWindowSize(ctx, 560, 420, ImGui.Cond_FirstUseEver())
   local color_count, var_count = push_theme()
-  local visible, open = ImGui.Begin(ctx, "REAPER Audio Tag", state.window_open, ImGui.WindowFlags_NoCollapse())
+  local visible, open = ImGui.Begin(ctx, APP_TITLE, state.window_open, ImGui.WindowFlags_NoCollapse())
   state.window_open = open
   if visible then
     report_icons.begin_frame(state.ui.icons)

@@ -25,11 +25,21 @@ end
 
 local function backend_candidates(data_dir, os_name)
   local suffix = executable_suffix(os_name)
+  if tostring(os_name or ""):match("^Win") then
+    return {
+      path_utils.join(data_dir, "bin", "windows-x64", "reaper-audio-tag-backend.exe"),
+      path_utils.join(data_dir, "bin", "reaper-audio-tag-backend" .. suffix),
+    }
+  end
+  if tostring(os_name or ""):match("^OSX") then
+    return {
+      path_utils.join(data_dir, "bin", "macos-arm64", "reaper-audio-tag-backend"),
+      path_utils.join(data_dir, "bin", "macos-x86_64", "reaper-audio-tag-backend"),
+      path_utils.join(data_dir, "bin", "reaper-audio-tag-backend" .. suffix),
+    }
+  end
   return {
     path_utils.join(data_dir, "bin", "reaper-audio-tag-backend" .. suffix),
-    path_utils.join(data_dir, "bin", "macos-arm64", "reaper-audio-tag-backend"),
-    path_utils.join(data_dir, "bin", "macos-x86_64", "reaper-audio-tag-backend"),
-    path_utils.join(data_dir, "bin", "windows-x64", "reaper-audio-tag-backend.exe"),
   }
 end
 

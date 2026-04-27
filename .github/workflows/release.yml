@@ -9,7 +9,7 @@ on:
       tag_name:
         description: "GitHub Release tag to upload assets to"
         required: true
-        default: "v0.4.4"
+        default: "v0.4.5"
 
 permissions:
   contents: write
@@ -89,13 +89,72 @@ jobs:
           tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
           overwrite_files: true
 
-  model-asset-note:
-    name: model asset reminder
+  model-asset:
+    name: model asset
     runs-on: ubuntu-latest
+    needs: backend-assets
+    env:
+      MODEL_FILENAME: cnn14_waveform_clipwise_opset17.onnx
+      MODEL_SHA256: deb65c5a2d291b3ce4ebf2360af71072b789ba11a4214ef77406b89ab97333aa
+      MODEL_SIZE_BYTES: "327331996"
+      MODEL_SOURCE_TAG: v0.4.4
     steps:
-      - name: Print model asset requirement
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag_name || github.ref }}
+          fetch-depth: 0
+
+      - name: Validate release checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_tag="${{ github.event.inputs.tag_name || github.ref_name }}"
+          if [[ "${release_tag}" != v* ]]; then
+            echo "Release tag must start with v: ${release_tag}" >&2
+            exit 1
+          fi
+          tag_sha="$(git rev-list -n 1 "${release_tag}")"
+          head_sha="$(git rev-parse HEAD)"
+          if [[ "${head_sha}" != "${tag_sha}" ]]; then
+            echo "Checked out ${head_sha}, but ${release_tag} points to ${tag_sha}." >&2
+            echo "Refusing to upload release assets from a different commit." >&2
+            exit 1
+          fi
+
+      - name: Copy verified model asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          gh release download "${MODEL_SOURCE_TAG}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --pattern "${MODEL_FILENAME}" \
+            --dir release-assets
+          actual_size="$(wc -c < "release-assets/${MODEL_FILENAME}" | tr -d '[:space:]')"
+          if [[ "${actual_size}" != "${MODEL_SIZE_BYTES}" ]]; then
+            echo "Model size mismatch: got ${actual_size}, expected ${MODEL_SIZE_BYTES}" >&2
+            exit 1
+          fi
+          echo "${MODEL_SHA256}  release-assets/${MODEL_FILENAME}" | sha256sum -c -
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cnn14-waveform-clipwise-onnx
+          path: release-assets/cnn14_waveform_clipwise_opset17.onnx
+
+      - name: Upload GitHub Release model asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/cnn14_waveform_clipwise_opset17.onnx
+          tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
+          overwrite_files: true
+
+      - name: Print model asset summary
         env:
           RELEASE_TAG: ${{ github.event.inputs.tag_name || github.ref_name }}
         run: |
-          echo "Attach cnn14_waveform_clipwise_opset17.onnx to the ${RELEASE_TAG} GitHub Release."
+          echo "Attached ${MODEL_FILENAME} to the ${RELEASE_TAG} GitHub Release."
           echo "Expected SHA-256: deb65c5a2d291b3ce4ebf2360af71072b789ba11a4214ef77406b89ab97333aa"

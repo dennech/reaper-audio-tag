@@ -124,10 +124,22 @@ end
 
 function tests.test_compact_report_contains_summary()
   local report = formatter.compact_report(sample_report)
+  luaunit.assertStrContains(report, "ok • GPU • 842 ms")
+  luaunit.assertEquals(report:find("coreml", 1, true), nil)
   luaunit.assertStrContains(report, "Top detected tags: Speech, Speech synthesizer, and Sigh.")
   luaunit.assertStrContains(report, "Top cues")
   luaunit.assertStrContains(report, "Tags")
   luaunit.assertStrContains(report, "More")
+end
+
+function tests.test_backend_names_are_rendered_as_compute_mode()
+  luaunit.assertEquals(formatter.compute_label("coreml"), "GPU")
+  luaunit.assertEquals(formatter.compute_label("directml"), "GPU")
+  luaunit.assertEquals(formatter.compute_label("cpu"), "CPU")
+  luaunit.assertEquals(formatter.compute_attempts({ "coreml", "cpu" }), { "GPU", "CPU" })
+  luaunit.assertEquals(formatter.compute_attempts({ "coreml", "directml", "cpu" }), { "GPU", "CPU" })
+  luaunit.assertEquals(formatter.display_warning("coreml_requested_but_unavailable"), "GPU acceleration was unavailable; CPU fallback was used.")
+  luaunit.assertEquals(formatter.display_warning("directml failed: provider missing"), "GPU failed: provider missing")
 end
 
 function tests.test_compact_report_lists_all_tags()
@@ -387,7 +399,10 @@ function tests.test_main_script_tracks_window_open_state_explicitly()
   handle:close()
 
   luaunit.assertStrContains(source, "window_open = true")
-  luaunit.assertStrContains(source, 'ImGui.Begin(ctx, "REAPER Audio Tag", state.window_open, ImGui.WindowFlags_NoCollapse())')
+  luaunit.assertStrContains(source, 'local PLUGIN_VERSION = "0.4.5"')
+  luaunit.assertStrContains(source, 'local APP_TITLE = "REAPER Audio Tag v" .. PLUGIN_VERSION')
+  luaunit.assertStrContains(source, 'ImGui.Begin(ctx, APP_TITLE, state.window_open, ImGui.WindowFlags_NoCollapse())')
+  luaunit.assertStrContains(source, "ImGui.TextColored(ctx, badge_color(\"accent\"), APP_TITLE)")
   luaunit.assertStrContains(source, "state.window_open = open")
   luaunit.assertStrContains(source, "if state.window_open then")
   luaunit.assertEquals(source:find('ImGui.Begin%(ctx, "REAPER Audio Tag", true,', 1, true), nil)

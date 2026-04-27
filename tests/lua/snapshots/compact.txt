@@ -1,5 +1,5 @@
 REAPER Audio Tag
-ok • coreml • 842 ms
+ok • GPU • 842 ms
 Top detected tags: Speech, Speech synthesizer, and Sigh.
 Top cues
   Speech 78%

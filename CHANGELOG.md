@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.5
+
+- Release automation now copies and verifies the ONNX model asset automatically, so a tag cannot ship without the first-run model download target.
+- ReaPack runtime lookup now prefers platform-specific backend assets over stale generic fallback binaries.
+- The REAPER window now shows the plugin version, and reports show CPU/GPU compute mode instead of internal backend names.
+
 ## 0.4.4
 
 - Hardened macOS CoreML startup so the backend redirects stale unsafe cache paths with spaces to `~/Library/Caches/reaper-audio-tag/coreml-cache`, preventing CPU fallback when REAPER keeps an older Lua action instance alive after update.

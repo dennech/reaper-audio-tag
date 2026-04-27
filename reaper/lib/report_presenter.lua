@@ -57,6 +57,51 @@ local function append(lines, value)
   lines[#lines + 1] = value
 end
 
+local function compute_label(backend)
+  local normalized = tostring(backend or ""):lower()
+  if normalized == "cpu" then
+    return "CPU"
+  end
+  if normalized == "" or normalized == "nil" then
+    return "Unknown"
+  end
+  return "GPU"
+end
+
+local function compute_attempts(backends)
+  local labels = {}
+  local previous = nil
+  for _, backend in ipairs(backends or {}) do
+    local label = compute_label(backend)
+    if label ~= previous then
+      labels[#labels + 1] = label
+      previous = label
+    end
+  end
+  return labels
+end
+
+local function display_warning(warning)
+  local text = tostring(warning or "")
+  local normalized = text:lower()
+  if normalized:find("coreml_requested_but_unavailable", 1, true) or normalized:find("directml_requested_but_unavailable", 1, true) then
+    return "GPU acceleration was unavailable; CPU fallback was used."
+  end
+  text = text:gsub("CoreML", "GPU")
+  text = text:gsub("coreml", "GPU")
+  text = text:gsub("DirectML", "GPU")
+  text = text:gsub("directml", "GPU")
+  return text
+end
+
+local function display_warnings(warnings)
+  local rows = {}
+  for _, warning in ipairs(warnings or {}) do
+    rows[#rows + 1] = display_warning(warning)
+  end
+  return rows
+end
+
 local function support_text(row)
   local support_count = tonumber(row.support_count) or 0
   local segment_count = tonumber(row.segment_count) or 0
@@ -87,6 +132,18 @@ function M.bucket_label(bucket)
   return BUCKET_LABELS[bucket] or "Tag"
 end
 
+function M.compute_label(backend)
+  return compute_label(backend)
+end
+
+function M.compute_attempts(backends)
+  return compute_attempts(backends)
+end
+
+function M.display_warning(warning)
+  return display_warning(warning)
+end
+
 function M.view_model(result)
   local predictions = clone_predictions(result.predictions)
   local highlights = {}
@@ -114,8 +171,10 @@ function M.view_model(result)
     summary = result.summary or "No cues yet.",
     backend = result.backend,
     attempted_backends = result.attempted_backends or {},
+    compute = compute_label(result.backend),
+    attempted_compute = compute_attempts(result.attempted_backends or {}),
     total_ms = total_ms,
-    warnings = result.warnings or {},
+    warnings = display_warnings(result.warnings or {}),
     predictions = predictions,
     highlights = highlights,
     model_status = result.model_status or {},
@@ -128,7 +187,7 @@ function M.compact_report(result)
   local lines = {}
 
   append(lines, vm.title)
-  append(lines, string.format("%s • %s • %d ms", vm.status, tostring(vm.backend or "cpu"), vm.total_ms))
+  append(lines, string.format("%s • %s • %d ms", vm.status, vm.compute, vm.total_ms))
   append(lines, vm.summary)
 
   if #vm.highlights > 0 then
@@ -159,10 +218,10 @@ function M.detail_report(result)
   local lines = {}
 
   append(lines, vm.title .. " — More")
-  append(lines, string.format("%s • %s • %d ms", vm.status, tostring(vm.backend or "cpu"), vm.total_ms))
+  append(lines, string.format("%s • %s • %d ms", vm.status, vm.compute, vm.total_ms))
   append(lines, "Stage: " .. tostring(vm.stage))
-  if #vm.attempted_backends > 0 then
-    append(lines, "Tried: " .. table.concat(vm.attempted_backends, " -> "))
+  if #vm.attempted_compute > 0 then
+    append(lines, "Tried: " .. table.concat(vm.attempted_compute, " -> "))
   end
   if vm.item and vm.item.item_position and vm.item.item_length then
     append(lines, string.format("Range: %.2fs + %.2fs", tonumber(vm.item.item_position) or 0, tonumber(vm.item.item_length) or 0))
@@ -236,10 +295,10 @@ function M.error_report(result)
     append(lines, string.format("Read: %s / %s", tostring(result.item.read_strategy or "n/a"), tostring(result.item.read_mode)))
   end
   if result and result.attempted_backends and #result.attempted_backends > 0 and stage ~= "export" then
-    append(lines, "Tried: " .. table.concat(result.attempted_backends, " -> "))
+    append(lines, "Tried: " .. table.concat(compute_attempts(result.attempted_backends), " -> "))
   end
   if result and result.warnings and #result.warnings > 0 then
-    append(lines, "Warnings: " .. table.concat(result.warnings, " | "))
+    append(lines, "Warnings: " .. table.concat(display_warnings(result.warnings), " | "))
   end
   return table.concat(lines, "\n")
 end

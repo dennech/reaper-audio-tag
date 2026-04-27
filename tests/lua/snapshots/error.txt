@@ -2,5 +2,5 @@ REAPER Audio Tag
 Try again
 missing_model
 ONNX model was not found
-Tried: coreml -> cpu
-Warnings: coreml_requested_but_unavailable
+Tried: GPU -> CPU
+Warnings: GPU acceleration was unavailable; CPU fallback was used.

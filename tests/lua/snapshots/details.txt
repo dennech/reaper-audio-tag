@@ -1,7 +1,7 @@
 REAPER Audio Tag — More
-ok • coreml • 842 ms
+ok • GPU • 842 ms
 Stage: runtime
-Tried: coreml -> cpu
+Tried: GPU -> CPU
 Clip tags only, not events.
 Predictions:
   - [Strong] Speech 0.78
