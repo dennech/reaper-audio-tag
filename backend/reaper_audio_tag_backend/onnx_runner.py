@@ -44,12 +44,23 @@ def provider_candidates(requested: str) -> list[tuple[str, object]]:
     return candidates
 
 
+def _coreml_cache_dir(cache_dir: Path | None) -> Path | None:
+    if cache_dir is None:
+        return None
+    if platform.system().lower() == "darwin" and " " in str(cache_dir):
+        return Path.home() / "Library" / "Caches" / "reaper-audio-tag" / "coreml-cache"
+    return cache_dir
+
+
 def _session(model_path: Path, provider: object, cache_dir: Path | None):
     import onnxruntime as ort
 
     options = ort.SessionOptions()
     options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
     if isinstance(provider, tuple) and provider[0] == "CoreMLExecutionProvider" and cache_dir:
+        cache_dir = _coreml_cache_dir(cache_dir)
+        if cache_dir:
+            cache_dir.mkdir(parents=True, exist_ok=True)
         provider_options = dict(provider[1])
         provider_options["ModelCacheDirectory"] = str(cache_dir)
         provider = (provider[0], provider_options)
@@ -70,8 +81,6 @@ def analyze(audio_path: str | Path, model_path: str | Path, labels_path: str | P
     warnings: list[str] = []
     last_error: Exception | None = None
     cache_path = Path(cache_dir) if cache_dir else None
-    if cache_path:
-        cache_path.mkdir(parents=True, exist_ok=True)
 
     for backend_name, provider in provider_candidates(requested_backend):
         attempted.append(backend_name)

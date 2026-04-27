@@ -1,5 +1,5 @@
 -- @description REAPER Audio Tag
--- @version 0.4.3
+-- @version 0.4.4
 -- @author dennech
 -- @link https://github.com/dennech/reaper-audio-tag
 -- @screenshot https://raw.githubusercontent.com/dennech/reaper-audio-tag/main/docs/images/reaper-audio-tag-hero.png
@@ -11,7 +11,7 @@
 --
 --   No user-managed Python, venv, or manual model file selection is required.
 -- @changelog
---   - Fixed CoreML fallback to CPU on macOS by moving the CoreML cache outside paths with spaces.
+--   - Hardened the backend so stale Lua instances cannot pass an unsafe CoreML cache path and force a CPU fallback.
 --   - Kept the first-run ONNX model download flow and release assets unchanged.
 -- @provides
 --   [nomain] REAPER Audio Tag - Debug Export.lua

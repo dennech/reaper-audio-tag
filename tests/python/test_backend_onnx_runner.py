@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import os
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -108,3 +109,35 @@ def test_coreml_session_uses_cache_directory_and_cpu_fallback() -> None:
         assert providers[1] == "CPUExecutionProvider"
 
     _with_fake_ort(_FakeOrt(["CoreMLExecutionProvider", "CPUExecutionProvider"]), "Darwin", run)
+
+
+def test_coreml_session_redirects_legacy_cache_path_with_spaces(tmp_path: Path) -> None:
+    original_home = os.environ.get("HOME")
+    os.environ["HOME"] = str(tmp_path)
+
+    def run(fake_ort: _FakeOrt):
+        onnx_runner._session(
+            Path("/tmp/model.onnx"),
+            (
+                "CoreMLExecutionProvider",
+                {
+                    "ModelFormat": "MLProgram",
+                    "MLComputeUnits": "ALL",
+                    "RequireStaticInputShapes": "1",
+                },
+            ),
+            Path("/Users/example/Library/Application Support/REAPER/Data/reaper-panns-item-report/coreml-cache"),
+        )
+        providers = fake_ort.created_sessions[-1]["providers"]
+        cache_dir = providers[0][1]["ModelCacheDirectory"]
+        assert cache_dir == str(tmp_path / "Library" / "Caches" / "reaper-audio-tag" / "coreml-cache")
+        assert "Application Support" not in cache_dir
+        assert Path(cache_dir).is_dir()
+
+    try:
+        _with_fake_ort(_FakeOrt(["CoreMLExecutionProvider", "CPUExecutionProvider"]), "Darwin", run)
+    finally:
+        if original_home is None:
+            os.environ.pop("HOME", None)
+        else:
+            os.environ["HOME"] = original_home

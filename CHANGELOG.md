@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.4
+
+- Hardened macOS CoreML startup so the backend redirects stale unsafe cache paths with spaces to `~/Library/Caches/reaper-audio-tag/coreml-cache`, preventing CPU fallback when REAPER keeps an older Lua action instance alive after update.
+- Added regression coverage for CoreML/DirectML provider selection, release tag SHA guards, model download failures, checksum cleanup, and ReaPack package surface.
+
 ## 0.4.3
 
 - Fixed CoreML falling back to CPU on macOS by moving the CoreML cache to `~/Library/Caches/reaper-audio-tag/coreml-cache`, avoiding a packaged ONNX Runtime/CoreML path bug with `Application Support`.
