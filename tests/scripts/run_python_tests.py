@@ -16,6 +16,7 @@ TEST_MODULES = {
         "tests.python.test_backend_cli",
         "tests.python.test_backend_model_store",
         "tests.python.test_backend_onnx_runner",
+        "tests.python.test_model_conversion_tool",
         "tests.python.test_release_workflow",
     ],
     "integration": [

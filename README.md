@@ -18,6 +18,12 @@ You do not install Python, create a venv, or choose a model file manually. The p
 
 The model is large: about 327 MB.
 
+## Model
+
+This project uses the PANNs `Cnn14` AudioSet tagging model by Qiuqiang Kong, Yin Cao, Turab Iqbal, Yuxuan Wang, Wenwu Wang, and Mark D. Plumbley. The release model is an ONNX export of the upstream `Cnn14_mAP=0.431.pth` checkpoint, converted for local REAPER use.
+
+More details and the maintainer-only conversion workflow are in [docs/model.md](docs/model.md).
+
 ## Install
 
 1. Install [ReaPack](https://reapack.com/).

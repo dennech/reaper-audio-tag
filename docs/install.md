@@ -27,6 +27,7 @@ ReaPack installs:
 - the platform backend executable for your REAPER platform.
 
 The ONNX model is not stored in git. The main action downloads it from the GitHub Release asset when you click `Download Model`.
+It is an ONNX export of the upstream PANNs `Cnn14_mAP=0.431.pth` checkpoint.
 
 ## Downloaded Model
 
@@ -43,3 +44,5 @@ REAPER/Data/reaper-panns-item-report/models/
 ```
 
 No Python, venv, FFmpeg, or manual `.pth` checkpoint setup is required.
+
+For model attribution and maintainer conversion notes, see [model.md](model.md).

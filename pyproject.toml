@@ -24,6 +24,11 @@ dev = [
   "pytest>=8.2,<9.0",
   "pyinstaller>=6.11,<7.0",
 ]
+model-export = [
+  "onnx>=1.16,<2.0",
+  "torch>=2.2,<3.0",
+  "torchlibrosa>=0.1.0,<0.2",
+]
 
 [project.scripts]
 reaper-audio-tag-backend = "reaper_audio_tag_backend.cli:main"

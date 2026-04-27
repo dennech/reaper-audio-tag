@@ -21,8 +21,14 @@ This project includes or packages the following third-party components:
 ## PANNs / audioset_tagging_cnn
 
 - Source: `qiuqiangkong/audioset_tagging_cnn`
-- The current public backend uses an exported ONNX Cnn14 model derived from this project.
-- License: MIT
+- Upstream repo: `https://github.com/qiuqiangkong/audioset_tagging_cnn`
+- Upstream pretrained model archive: `https://zenodo.org/records/3987831`
+- Paper: Qiuqiang Kong, Yin Cao, Turab Iqbal, Yuxuan Wang, Wenwu Wang, Mark D. Plumbley, "PANNs: Large-Scale Pretrained Audio Neural Networks for Audio Pattern Recognition"
+- The current public backend uses an ONNX export of the upstream `Cnn14_mAP=0.431.pth` checkpoint.
+- This project uses the model for clip-level AudioSet tagging and maps the 527 model outputs to human-readable labels.
+- License notes:
+  - upstream code: MIT
+  - Zenodo pretrained model archive: Creative Commons Attribution 4.0 International
 
 ## AudioSet class labels
 

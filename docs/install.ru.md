@@ -27,6 +27,7 @@ ReaPack устанавливает:
 - backend executable для твоей платформы REAPER.
 
 ONNX-модель не хранится в git. Main action скачивает её из GitHub Release asset, когда ты нажимаешь `Download Model`.
+Это ONNX-экспорт upstream PANNs checkpoint `Cnn14_mAP=0.431.pth`.
 
 ## Скачиваемая Модель
 
@@ -43,3 +44,5 @@ REAPER/Data/reaper-panns-item-report/models/
 ```
 
 Python, venv, FFmpeg и ручная настройка `.pth` checkpoint больше не нужны.
+
+Атрибуция модели и maintainer notes по конвертации описаны в [model.ru.md](model.ru.md).
