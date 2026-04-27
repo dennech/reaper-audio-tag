@@ -8,7 +8,7 @@ from typing import Any
 from . import __version__
 from .constants import MODEL_SHA256, MODEL_SIZE_BYTES, MODEL_URL, SCHEMA_VERSION
 from .json_io import read_json, write_json
-from .model_store import download_verified, verify_file
+from .model_store import DownloadModelError, download_verified, friendly_download_error, verify_file
 
 
 def _log(path: str | Path | None, message: str) -> None:
@@ -123,7 +123,18 @@ def cmd_download_model(args) -> int:
         return 0
     except Exception as exc:
         _log(args.log_file, traceback.format_exc())
-        write_json(args.result_file, {"status": "error", "error": {"code": "download_failed", "message": str(exc)}})
+        error = exc if isinstance(exc, DownloadModelError) else friendly_download_error(exc)
+        write_json(
+            args.result_file,
+            {
+                "status": "error",
+                "error": {
+                    "code": error.code,
+                    "message": error.user_message,
+                    "detail": error.detail,
+                },
+            },
+        )
         return 1
 
 

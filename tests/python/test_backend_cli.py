@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from reaper_audio_tag_backend.cli import main
+from reaper_audio_tag_backend import cli as cli_module
 from reaper_audio_tag_backend.json_io import read_json
-from reaper_audio_tag_backend.model_store import sha256_file
+from reaper_audio_tag_backend.model_store import DownloadModelError, sha256_file
 
 
 def test_download_model_command_writes_result_and_progress(tmp_path: Path) -> None:
@@ -16,7 +16,7 @@ def test_download_model_command_writes_result_and_progress(tmp_path: Path) -> No
     progress = tmp_path / "progress.json"
     log = tmp_path / "download.log"
 
-    code = main(
+    code = cli_module.main(
         [
             "download-model",
             "--url",
@@ -46,9 +46,52 @@ def test_verify_model_command_fails_safely(tmp_path: Path) -> None:
     model.write_bytes(b"bad")
     result = tmp_path / "verify.json"
 
-    code = main(["verify-model", "--model-file", str(model), "--sha256", "0" * 64, "--size", "3", "--result-file", str(result)])
+    code = cli_module.main(["verify-model", "--model-file", str(model), "--sha256", "0" * 64, "--size", "3", "--result-file", str(result)])
 
     assert code == 1
     payload = read_json(result)
     assert payload["status"] == "error"
     assert payload["reason"] == "checksum_mismatch"
+
+
+def test_download_model_command_maps_certificate_error(tmp_path: Path) -> None:
+    def fake_download_verified(**_kwargs):
+        raise DownloadModelError(
+            "certificate_failed",
+            "Could not verify GitHub's HTTPS certificate. Update REAPER Audio Tag and try again.",
+            "<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed>",
+        )
+
+    result = tmp_path / "result.json"
+    progress = tmp_path / "progress.json"
+    log = tmp_path / "download.log"
+    original_download_verified = cli_module.download_verified
+    cli_module.download_verified = fake_download_verified
+    try:
+        code = cli_module.main(
+            [
+                "download-model",
+                "--url",
+                "https://github.com/example/model.onnx",
+                "--output",
+                str(tmp_path / "model.onnx"),
+                "--sha256",
+                "0" * 64,
+                "--size",
+                "5",
+                "--progress-file",
+                str(progress),
+                "--result-file",
+                str(result),
+                "--log-file",
+                str(log),
+            ]
+        )
+    finally:
+        cli_module.download_verified = original_download_verified
+
+    payload = read_json(result)
+    assert code == 1
+    assert payload["error"]["code"] == "certificate_failed"
+    assert payload["error"]["message"] == "Could not verify GitHub's HTTPS certificate. Update REAPER Audio Tag and try again."
+    assert "CERTIFICATE_VERIFY_FAILED" in payload["error"]["detail"]

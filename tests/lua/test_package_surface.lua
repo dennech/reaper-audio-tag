@@ -9,13 +9,13 @@ local function read_file(path)
 end
 
 local function current_version_block(index_xml)
-  local block = index_xml:match('<version name="0%.4%.1".-</version>')
+  local block = index_xml:match('<version name="0%.4%.2".-</version>')
   return block or ""
 end
 
 function tests.test_public_reapack_actions_are_main_and_debug_only()
   local source = read_file("reaper/REAPER Audio Tag.lua")
-  luaunit.assertStrContains(source, "-- @version 0.4.1")
+  luaunit.assertStrContains(source, "-- @version 0.4.2")
   luaunit.assertStrContains(source, "[nomain] REAPER Audio Tag - Debug Export.lua")
   luaunit.assertEquals(source:find("REAPER Audio Tag %- Configure%.lua", 1, false) ~= nil, false)
   luaunit.assertEquals(source:find("REAPER Audio Tag %- Setup%.lua", 1, false) ~= nil, false)
@@ -28,6 +28,11 @@ function tests.test_main_script_owns_first_run_model_screen()
   luaunit.assertStrContains(source, 'Download Model')
   luaunit.assertStrContains(source, 'start_model_download')
   luaunit.assertStrContains(source, 'Analyze Selected Item')
+  luaunit.assertStrContains(source, 'Download the audio tagging model once. Analysis runs locally after that.')
+  luaunit.assertStrContains(source, 'Model is not installed yet.')
+  luaunit.assertStrContains(source, 'Last download error detail')
+  luaunit.assertEquals(source:find('Saved to:', 1, true) ~= nil, false)
+  luaunit.assertEquals(source:find('The ONNX model has not been downloaded yet.', 1, true) ~= nil, false)
   luaunit.assertEquals(source:find('Save Configuration', 1, true) ~= nil, false)
   luaunit.assertEquals(source:find('Check Setup', 1, true) ~= nil, false)
   luaunit.assertEquals(source:find('configure_runtime', 1, true) ~= nil, false)

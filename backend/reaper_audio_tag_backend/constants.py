@@ -13,7 +13,7 @@ MODEL_SIZE_BYTES = 327331996
 MODEL_SHA256 = "deb65c5a2d291b3ce4ebf2360af71072b789ba11a4214ef77406b89ab97333aa"
 MODEL_URL = (
     "https://github.com/dennech/reaper-audio-tag/releases/download/"
-    "v0.4.1/cnn14_waveform_clipwise_opset17.onnx"
+    "v0.4.2/cnn14_waveform_clipwise_opset17.onnx"
 )
 
 POSSIBLE_THRESHOLD = 0.18

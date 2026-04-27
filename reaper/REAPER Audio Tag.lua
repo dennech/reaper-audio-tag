@@ -1,5 +1,5 @@
 -- @description REAPER Audio Tag
--- @version 0.4.1
+-- @version 0.4.2
 -- @author dennech
 -- @link https://github.com/dennech/reaper-audio-tag
 -- @screenshot https://raw.githubusercontent.com/dennech/reaper-audio-tag/main/docs/images/reaper-audio-tag-hero.png
@@ -11,9 +11,9 @@
 --
 --   No user-managed Python, venv, or manual model file selection is required.
 -- @changelog
---   - Rebuilt release assets from the exact release tag for reproducible GitHub Releases.
---   - Fixed Intel macOS backend packaging by allowing the available ONNX Runtime version.
---   - Kept the simple first-run ONNX model download flow unchanged.
+--   - Simplified the first-run model download screen so users see one clear status and fewer technical paths.
+--   - Bundled trusted certificate roots for the backend downloader to fix macOS HTTPS certificate failures.
+--   - Added friendlier download failure messages while keeping technical details in Advanced diagnostics.
 -- @provides
 --   [nomain] REAPER Audio Tag - Debug Export.lua
 --   [nomain] PANNs Item Report.lua
@@ -350,7 +350,7 @@ end
 local function open_model_setup(message, options)
   state.screen = "setup"
   state.setup.message = message or state.setup.message
-  state.last_error = message or state.last_error
+  state.last_error = nil
   refresh_model_status(options or { verify_checksum = false })
 end
 
@@ -508,7 +508,7 @@ local function ensure_started()
   end
   local model_status = runtime_client.model_status(paths, { verify_checksum = false })
   if not model_status.ok then
-    open_model_setup(start_message or model_status.message)
+    open_model_setup(start_message)
     return
   end
 
@@ -589,26 +589,26 @@ local function render_model_setup()
   telemetry_counter("tags_total", 0)
   telemetry_counter("visible_tags", 0)
   telemetry_label("focused_tag", state.focused_tag or "none")
-  render_image_label("details", "Download the local audio tagging model.", badge_color("accent"), 16)
+  render_image_label("details", "Download model", badge_color("accent"), 16)
   ImGui.Spacing(ctx)
-  ImGui.TextWrapped(ctx, "REAPER Audio Tag uses a local ONNX Cnn14 model. Download it once, then analysis runs locally on this machine.")
+  ImGui.TextWrapped(ctx, "Download the audio tagging model once. Analysis runs locally after that.")
   ImGui.Spacing(ctx)
 
-  if state.last_error then
-    ImGui.Spacing(ctx)
-    ImGui.TextColored(ctx, badge_color("warning"), tostring(state.last_error))
-  end
-  if state.setup.message then
-    ImGui.Spacing(ctx)
-    ImGui.TextWrapped(ctx, tostring(state.setup.message))
-  end
-
-  ImGui.Spacing(ctx)
   local model_status = state.setup.model_status or refresh_model_status({ verify_checksum = false })
-  local status_kind = model_status.ok and "success" or "warning"
-  ImGui.TextColored(ctx, badge_color(status_kind), model_status.message)
-  ImGui.TextDisabled(ctx, "Model: " .. runtime_client.MODEL_FILENAME .. " (" .. format_bytes(runtime_client.MODEL_SIZE_BYTES) .. ")")
-  ImGui.TextDisabled(ctx, "Saved to: " .. paths.model_path)
+  local download_error = state.setup.download_result and state.setup.download_result.error
+  local primary_message = state.setup.message
+  if not primary_message or primary_message == "" then
+    if model_status.ok then
+      primary_message = "Model is ready."
+    elseif model_status.state == "missing" then
+      primary_message = "Model is not installed yet."
+    else
+      primary_message = model_status.message
+    end
+  end
+  local status_kind = (model_status.ok and not download_error) and "success" or "warning"
+  ImGui.TextColored(ctx, badge_color(status_kind), tostring(primary_message))
+  ImGui.TextDisabled(ctx, "Model size: " .. format_bytes(runtime_client.MODEL_SIZE_BYTES))
 
   if state.setup.download_job then
     local progress = state.setup.download_progress or {}
@@ -622,7 +622,13 @@ local function render_model_setup()
   end
 
   ImGui.Spacing(ctx)
-  if ImGui.Button(ctx, model_status.ok and "Verify / Redownload Model" or "Download Model") then
+  local download_label = "Download Model"
+  if download_error then
+    download_label = "Try Again"
+  elseif model_status.ok then
+    download_label = "Redownload Model"
+  end
+  if ImGui.Button(ctx, download_label) then
     start_model_download()
   end
   ImGui.SameLine(ctx)
@@ -635,12 +641,18 @@ local function render_model_setup()
   if ImGui.TreeNode then
     local opened = ImGui.TreeNode(ctx, "Advanced diagnostics")
     if opened then
+      ImGui.TextDisabled(ctx, "Model file")
+      ImGui.TextWrapped(ctx, paths.model_path)
       ImGui.TextDisabled(ctx, "Backend")
       ImGui.TextWrapped(ctx, paths.backend_path)
       ImGui.TextDisabled(ctx, "Labels")
       ImGui.TextWrapped(ctx, paths.labels_path)
       ImGui.TextDisabled(ctx, "Checksum")
       ImGui.TextWrapped(ctx, runtime_client.MODEL_SHA256)
+      if download_error then
+        ImGui.TextDisabled(ctx, "Last download error detail")
+        ImGui.TextWrapped(ctx, tostring(download_error.detail or download_error.message or "unknown error"))
+      end
       if ImGui.TreePop then
         ImGui.TreePop(ctx)
       end
