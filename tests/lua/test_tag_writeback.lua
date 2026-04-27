@@ -1,0 +1,278 @@
+local luaunit = require("tests.lua.vendor.luaunit")
+local tag_writeback = require("tag_writeback")
+
+local tests = {}
+
+local sample_result = {
+  status = "ok",
+  backend = "coreml",
+  attempted_backends = { "coreml", "cpu" },
+  timing_ms = { total = 250 },
+  summary = "Top detected tags: Music, Drum and bass, and Electronic dance music.",
+  item = {
+    item_guid = "{ITEM-1}",
+    item_name = "Loop.wav",
+    item_position = 12.5,
+    item_length = 4.25,
+    selected_end = 16.75,
+  },
+  predictions = {
+    { label = "Music", score = 0.854, bucket = "strong", peak_score = 0.91, support_count = 2, segment_count = 2 },
+    { label = "Drum and bass", score = 0.351, bucket = "solid", peak_score = 0.42, support_count = 2, segment_count = 2 },
+    { label = "Electronic dance music", score = 0.263, bucket = "solid", peak_score = 0.31, support_count = 1, segment_count = 2 },
+    { label = "House music", score = 0.194, bucket = "possible", peak_score = 0.22, support_count = 1, segment_count = 2 },
+  },
+  highlights = {},
+  warnings = {},
+  model_status = { name = "Cnn14 ONNX", source = "downloaded model" },
+}
+
+local function clone_table(value)
+  if type(value) ~= "table" then
+    return value
+  end
+  local copy = {}
+  for key, nested in pairs(value) do
+    copy[key] = clone_table(nested)
+  end
+  return copy
+end
+
+local function with_fake_reaper(config, callback)
+  local original_reaper = _G.reaper
+  local item = {
+    guid = config.guid or "{ITEM-1}",
+    position = config.position or 12.5,
+    length = config.length or 4.25,
+    notes = config.notes or "",
+    ext = {},
+  }
+  if config.region_id then
+    item.ext[tag_writeback.EXT_REGION_ID] = tostring(config.region_id)
+  end
+  local capture = {
+    item = item,
+    regions = clone_table(config.regions or {}),
+    next_region_id = config.next_region_id or 100,
+    undo_begin = 0,
+    undo_end = 0,
+    arrange_updates = 0,
+    set_region_calls = 0,
+  }
+
+  _G.reaper = {
+    CountSelectedMediaItems = function()
+      return config.selected_count or 1
+    end,
+    GetSelectedMediaItem = function()
+      if config.no_item then
+        return nil
+      end
+      return item
+    end,
+    GetSetMediaItemInfo_String = function(_, key, value, set_new_value)
+      if key == "GUID" then
+        return true, item.guid
+      end
+      if key == "P_NOTES" then
+        if set_new_value then
+          item.notes = value
+        end
+        return true, item.notes
+      end
+      if key:sub(1, 6) == "P_EXT:" then
+        if set_new_value then
+          item.ext[key] = value
+        end
+        return true, item.ext[key] or ""
+      end
+      return false, ""
+    end,
+    GetMediaItemInfo_Value = function(_, key)
+      if key == "D_POSITION" then
+        return item.position
+      end
+      if key == "D_LENGTH" then
+        return item.length
+      end
+      return 0
+    end,
+    AddProjectMarker2 = function(_, is_region, position, region_end, name, _, color)
+      local id = capture.next_region_id
+      capture.next_region_id = capture.next_region_id + 1
+      capture.regions[#capture.regions + 1] = {
+        id = id,
+        is_region = is_region,
+        position = position,
+        region_end = region_end,
+        name = name,
+        color = color or 0,
+      }
+      return id
+    end,
+    EnumProjectMarkers3 = function(_, index)
+      local region = capture.regions[index + 1]
+      if not region then
+        return 0
+      end
+      return 1, region.is_region, region.position, region.region_end, region.name, region.id, region.color or 0
+    end,
+    SetProjectMarker4 = function(_, id, is_region, position, region_end, name, color)
+      capture.set_region_calls = capture.set_region_calls + 1
+      for _, region in ipairs(capture.regions) do
+        if region.id == id then
+          region.is_region = is_region
+          region.position = position
+          region.region_end = region_end
+          region.name = name
+          region.color = color or region.color or 0
+        end
+      end
+      return true
+    end,
+    Undo_BeginBlock = function()
+      capture.undo_begin = capture.undo_begin + 1
+    end,
+    Undo_EndBlock = function()
+      capture.undo_end = capture.undo_end + 1
+    end,
+    UpdateArrange = function()
+      capture.arrange_updates = capture.arrange_updates + 1
+    end,
+  }
+
+  local ok, err = xpcall(function()
+    callback(capture)
+  end, debug.traceback)
+  _G.reaper = original_reaper
+  if not ok then
+    error(err)
+  end
+end
+
+function tests.test_region_name_uses_top_three_tags()
+  luaunit.assertEquals(
+    tag_writeback.region_name(sample_result),
+    "Audio Tag: Music 85%, Drum and bass 35%, Electronic dance music 26%"
+  )
+end
+
+function tests.test_notes_block_contains_full_report_context()
+  local block = tag_writeback.notes_block(sample_result, "0.4.8")
+  luaunit.assertStrContains(block, tag_writeback.NOTE_BEGIN)
+  luaunit.assertStrContains(block, "Generated by REAPER Audio Tag v0.4.8")
+  luaunit.assertStrContains(block, "Summary: Top detected tags: Music, Drum and bass, and Electronic dance music.")
+  luaunit.assertStrContains(block, "Item range: 12.50s - 16.75s")
+  luaunit.assertStrContains(block, "Compute: GPU")
+  luaunit.assertStrContains(block, "1. Music 85%")
+  luaunit.assertStrContains(block, "4. House music 19%")
+  luaunit.assertStrContains(block, tag_writeback.NOTE_END)
+end
+
+function tests.test_replace_notes_block_preserves_user_notes()
+  local old_block = table.concat({
+    tag_writeback.NOTE_BEGIN,
+    "Generated by an old version",
+    tag_writeback.NOTE_END,
+  }, "\n")
+  local updated = tag_writeback.replace_notes_block("User note\n\n" .. old_block .. "\n\nKeep this too", "NEW BLOCK")
+  luaunit.assertEquals(updated, "User note\n\nNEW BLOCK\n\nKeep this too")
+end
+
+function tests.test_write_result_creates_region_and_notes()
+  with_fake_reaper({}, function(capture)
+    local ok, message = tag_writeback.write_result_with_undo(sample_result, { plugin_version = "0.4.8" })
+    luaunit.assertEquals(ok, true)
+    luaunit.assertEquals(message, "Tags written to item notes and region.")
+    luaunit.assertStrContains(capture.item.notes, "Generated by REAPER Audio Tag v0.4.8")
+    luaunit.assertEquals(#capture.regions, 1)
+    luaunit.assertEquals(capture.regions[1].name, "Audio Tag: Music 85%, Drum and bass 35%, Electronic dance music 26%")
+    luaunit.assertEquals(capture.regions[1].position, 12.5)
+    luaunit.assertEquals(capture.regions[1].region_end, 16.75)
+    luaunit.assertEquals(capture.item.ext[tag_writeback.EXT_REGION_ID], tostring(capture.regions[1].id))
+    luaunit.assertEquals(capture.undo_begin, 1)
+    luaunit.assertEquals(capture.undo_end, 1)
+    luaunit.assertEquals(capture.arrange_updates, 1)
+  end)
+end
+
+function tests.test_repeat_write_updates_existing_plugin_region_without_duplicate()
+  with_fake_reaper({
+    region_id = 7,
+    regions = {
+      { id = 7, is_region = true, position = 1, region_end = 2, name = "Audio Tag: Old", color = 5 },
+    },
+  }, function(capture)
+    local ok = tag_writeback.write_result(sample_result, { plugin_version = "0.4.8" })
+    luaunit.assertEquals(ok, true)
+    luaunit.assertEquals(#capture.regions, 1)
+    luaunit.assertEquals(capture.set_region_calls, 1)
+    luaunit.assertEquals(capture.regions[1].name, "Audio Tag: Music 85%, Drum and bass 35%, Electronic dance music 26%")
+    luaunit.assertEquals(capture.regions[1].color, 5)
+  end)
+end
+
+function tests.test_repeat_write_does_not_overwrite_user_region_with_same_id()
+  with_fake_reaper({
+    region_id = 7,
+    regions = {
+      { id = 7, is_region = true, position = 1, region_end = 2, name = "User Scene Marker", color = 5 },
+    },
+    next_region_id = 8,
+  }, function(capture)
+    local ok = tag_writeback.write_result(sample_result, { plugin_version = "0.4.8" })
+    luaunit.assertEquals(ok, true)
+    luaunit.assertEquals(#capture.regions, 2)
+    luaunit.assertEquals(capture.regions[1].name, "User Scene Marker")
+    luaunit.assertEquals(capture.set_region_calls, 0)
+    luaunit.assertEquals(capture.item.ext[tag_writeback.EXT_REGION_ID], "8")
+  end)
+end
+
+function tests.test_write_result_refuses_changed_selected_item_guid()
+  local changed_result = clone_table(sample_result)
+  changed_result.item.item_guid = "{OTHER}"
+  with_fake_reaper({}, function()
+    local ok, message = tag_writeback.write_result(changed_result, { plugin_version = "0.4.8" })
+    luaunit.assertEquals(ok, false)
+    luaunit.assertStrContains(message, "not the analyzed item")
+  end)
+end
+
+function tests.test_write_result_falls_back_to_position_and_length_match()
+  local no_guid_result = clone_table(sample_result)
+  no_guid_result.item.item_guid = nil
+  with_fake_reaper({}, function(capture)
+    local ok = tag_writeback.write_result(no_guid_result, { plugin_version = "0.4.8" })
+    luaunit.assertEquals(ok, true)
+    luaunit.assertEquals(#capture.regions, 1)
+  end)
+end
+
+function tests.test_write_result_refuses_selection_mismatch_without_guid()
+  local no_guid_result = clone_table(sample_result)
+  no_guid_result.item.item_guid = nil
+  with_fake_reaper({ position = 100 }, function()
+    local ok, message = tag_writeback.write_result(no_guid_result, { plugin_version = "0.4.8" })
+    luaunit.assertEquals(ok, false)
+    luaunit.assertStrContains(message, "does not match")
+  end)
+end
+
+function tests.test_write_result_requires_single_selected_item()
+  with_fake_reaper({ selected_count = 0 }, function()
+    local ok, message = tag_writeback.write_result(sample_result, { plugin_version = "0.4.8" })
+    luaunit.assertEquals(ok, false)
+    luaunit.assertEquals(message, "Select the analyzed audio item before writing tags.")
+  end)
+end
+
+function tests.test_write_result_requires_successful_analysis()
+  with_fake_reaper({}, function()
+    local ok, message = tag_writeback.write_result({ status = "error" }, { plugin_version = "0.4.8" })
+    luaunit.assertEquals(ok, false)
+    luaunit.assertEquals(message, "Run analysis successfully before writing tags.")
+  end)
+end
+
+return tests

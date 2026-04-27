@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.8
+
+- Added `Write Tags to Project`, a one-click writeback action that saves the analyzed tags into the selected item notes and creates or updates a matching project region.
+- The generated item notes preserve existing user notes and replace only the managed `REAPER Audio Tag` block on repeated writes.
+- Added selection-safety and region-idempotency checks so repeated writes do not duplicate plugin regions or overwrite user-created regions.
+
 ## 0.4.7
 
 - Fixed backend lookup on modern REAPER macOS builds that report `macOS-*` instead of the older `OSX*` value, preventing the plugin from falling back to the stale generic backend path.

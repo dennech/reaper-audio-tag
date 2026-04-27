@@ -1,5 +1,5 @@
 -- @description REAPER Audio Tag
--- @version 0.4.7
+-- @version 0.4.8
 -- @author dennech
 -- @link https://github.com/dennech/reaper-audio-tag
 -- @screenshot https://raw.githubusercontent.com/dennech/reaper-audio-tag/main/docs/images/reaper-audio-tag-hero.png
@@ -8,11 +8,13 @@
 --
 --   ReaPack installs the Lua UI and a platform backend. On first run, click
 --   `Download Model` to fetch the ONNX Cnn14 model into REAPER's data folder.
+--   After analysis, `Write Tags to Project` can save the result into item
+--   notes and a project region.
 --
 --   No user-managed Python, venv, or manual model file selection is required.
 -- @changelog
---   - Detect modern REAPER macOS names such as `macOS-arm64` instead of only legacy `OSX*` values.
---   - Show backend candidates in diagnostics and color backend setup errors as warnings.
+--   - Add `Write Tags to Project`, which writes top tags to an item note block and creates or updates a matching project region.
+--   - Preserve user item notes and avoid duplicate REAPER Audio Tag regions on repeated writes.
 -- @provides
 --   [nomain] REAPER Audio Tag - Debug Export.lua
 --   [nomain] PANNs Item Report.lua
@@ -38,6 +40,7 @@ local report_presenter = require("report_presenter")
 local report_run_cleanup = require("report_run_cleanup")
 local report_ui_state = require("report_ui_state")
 local runtime_client = require("runtime_client")
+local tag_writeback = require("tag_writeback")
 
 if not reaper.APIExists("ImGui_CreateContext") then
   local message = "ReaImGui is required for this script.\n\nInstall 'ReaImGui: ReaScript binding for Dear ImGui' from ReaPack and restart REAPER."
@@ -64,7 +67,7 @@ path_utils.ensure_dir(paths.tmp_dir)
 path_utils.ensure_dir(paths.jobs_dir)
 report_run_cleanup.prune_stale(paths)
 
-local PLUGIN_VERSION = "0.4.7"
+local PLUGIN_VERSION = "0.4.8"
 local APP_TITLE = "REAPER Audio Tag v" .. PLUGIN_VERSION
 local start_mode = _G.REAPER_AUDIO_TAG_START_MODE or "report"
 local start_message = _G.REAPER_AUDIO_TAG_OPEN_MESSAGE
@@ -86,6 +89,7 @@ local state = {
   focused_tag = nil,
   export_log_file = nil,
   notice = nil,
+  notice_kind = nil,
   run_artifacts = nil,
   setup = {
     message = start_message,
@@ -439,6 +443,7 @@ local function start_analysis(options)
   local previous_focused_tag = state.focused_tag
 
   state.notice = nil
+  state.notice_kind = nil
   local export_id = path_utils.sanitize_job_id(reaper.genGuid(""))
   local export_path = path_utils.join(paths.tmp_dir, "selected-item-" .. export_id .. ".wav")
   local export_log_path = path_utils.join(paths.logs_dir, "export-" .. export_id .. ".log")
@@ -454,6 +459,7 @@ local function start_analysis(options)
       state.current_view = previous_view
       state.focused_tag = previous_focused_tag
       state.notice = err
+      state.notice_kind = "warning"
       telemetry_event("selection_notice_preserved")
       return
     end
@@ -995,7 +1001,7 @@ local function render_result()
   end)
   if state.notice then
     ImGui.Spacing(ctx)
-    ImGui.TextColored(ctx, badge_color("warning"), tostring(state.notice))
+    ImGui.TextColored(ctx, badge_color(state.notice_kind or "warning"), tostring(state.notice))
   end
   ImGui.Spacing(ctx)
 
@@ -1011,6 +1017,14 @@ local function render_result()
   if ImGui.Button(ctx, "Another") then
     start_analysis({ preserve_result_if_selection_invalid = true })
     return
+  end
+  ImGui.SameLine(ctx)
+  if ImGui.Button(ctx, "Write Tags to Project") then
+    local ok, message = tag_writeback.write_result_with_undo(state.result, {
+      plugin_version = PLUGIN_VERSION,
+    })
+    state.notice = message
+    state.notice_kind = ok and "success" or "warning"
   end
 
   if state.current_view == "details" then

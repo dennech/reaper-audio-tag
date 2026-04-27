@@ -15,6 +15,7 @@ https://github.com/dennech/reaper-audio-tag/raw/main/index.xml
 6. Выбери один audio item и запусти `REAPER Audio Tag`.
 7. Нажми `Download Model`.
 8. Когда модель будет готова, снова запусти `REAPER Audio Tag` для анализа выбранного item.
+9. Опционально: нажми `Write Tags to Project`, чтобы создать/обновить region и сохранить полный список тегов в notes выбранного item.
 
 ## Что Ставит ReaPack
 

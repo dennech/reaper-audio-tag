@@ -89,6 +89,16 @@ local function active_audio_take()
   return item, take
 end
 
+local function item_guid(item)
+  if reaper.GetSetMediaItemInfo_String then
+    local ok, guid = reaper.GetSetMediaItemInfo_String(item, "GUID", "", false)
+    if ok and guid and guid ~= "" then
+      return guid
+    end
+  end
+  return nil
+end
+
 local function diagnostics_lines(diagnostics)
   local keys = {
     "status",
@@ -386,6 +396,7 @@ local function build_payload(session)
   return {
     temp_audio_path = session.target_path,
     item_metadata = {
+      item_guid = session.item_guid,
       item_name = session.item_name,
       item_position = session.item_position,
       item_length = session.item_length,
@@ -479,6 +490,7 @@ function M.begin_export_selected_item(target_path, options)
 
   local item_position = reaper.GetMediaItemInfo_Value(item, "D_POSITION")
   local item_length = reaper.GetMediaItemInfo_Value(item, "D_LENGTH")
+  local guid = item_guid(item)
   if item_length <= 0 then
     return nil, "The selected item has zero length.", {
       status = "error",
@@ -501,6 +513,7 @@ function M.begin_export_selected_item(target_path, options)
   local source_consumed_length = item_length * take_playrate
   local diagnostics = {
     status = "pending",
+    item_guid = guid,
     item_name = item_name,
     item_position = round_number(item_position),
     item_length = round_number(item_length),
@@ -565,6 +578,7 @@ function M.begin_export_selected_item(target_path, options)
     chunk_start_project = item_position,
     started_at = now_seconds(),
     completed = false,
+    item_guid = guid,
     item_name = item_name,
     item_position = item_position,
     item_length = item_length,

@@ -2,7 +2,7 @@
 
 `REAPER Audio Tag` — маленький REAPER action для быстрого анализа отдельных аудио-клипов. Выбираешь один audio item, запускаешь action и получаешь компактные локальные теги `PANNs Cnn14` прямо внутри REAPER.
 
-Устанавливается через ReaPack, ONNX-модель скачивается один раз из окна REAPER, а дальше анализ работает локально без установки Python и без выхода из DAW.
+Устанавливается через ReaPack, ONNX-модель скачивается один раз из окна REAPER, а дальше анализ работает локально без установки Python и без выхода из DAW. После анализа кнопка `Write Tags to Project` может сохранить результат в notes выбранного item и создать соответствующий project region.
 
 ![Окно отчёта REAPER Audio Tag](docs/images/reaper-audio-tag-hero.png)
 
@@ -74,6 +74,7 @@ REAPER/Data/reaper-panns-item-report/models/
 - FFmpeg не нужен для текущего public flow.
 - После загрузки модели анализ работает локально.
 - Текущая версия анализирует один выбранный audio item за раз и делает clip-level tags.
+- `Write Tags to Project` создаёт видимый region на длину проанализированного item и сохраняет полный список тегов в notes item. Дорожки не переименовываются.
 
 ## Troubleshooting
 

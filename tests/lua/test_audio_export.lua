@@ -90,6 +90,12 @@ local function with_fake_reaper(config, callback)
       end
       return 0
     end,
+    GetSetMediaItemInfo_String = function(_, key)
+      if key == 'GUID' then
+        return true, config.item_guid or '{ITEM-GUID}'
+      end
+      return false, ''
+    end,
     GetMediaItemTake_Source = function()
       return source
     end,
@@ -167,6 +173,24 @@ local function with_fake_reaper(config, callback)
   if not ok then
     error(err)
   end
+end
+
+function tests.test_export_payload_includes_item_guid_for_writeback_safety()
+  with_fake_reaper({
+    item_guid = '{AUDIO-TAG-ITEM}',
+    item_position = 12.5,
+    item_length = 0.05,
+    accessor_start = 12.5,
+    accessor_end = 12.55,
+    source_channels = 1,
+  }, function(_, temp_root)
+    local payload, err = audio_export.export_selected_item(path_utils.join(temp_root, 'guid.wav'), {
+      diagnostics_path = path_utils.join(temp_root, 'guid.log'),
+    })
+
+    luaunit.assertEquals(err, nil)
+    luaunit.assertEquals(payload.item_metadata.item_guid, '{AUDIO-TAG-ITEM}')
+  end)
 end
 
 function tests.test_async_export_session_steps_without_blocking_whole_range()

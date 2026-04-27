@@ -403,13 +403,24 @@ function tests.test_main_script_tracks_window_open_state_explicitly()
   handle:close()
 
   luaunit.assertStrContains(source, "window_open = true")
-  luaunit.assertStrContains(source, 'local PLUGIN_VERSION = "0.4.7"')
+  luaunit.assertStrContains(source, 'local PLUGIN_VERSION = "0.4.8"')
   luaunit.assertStrContains(source, 'local APP_TITLE = "REAPER Audio Tag v" .. PLUGIN_VERSION')
   luaunit.assertStrContains(source, 'ImGui.Begin(ctx, APP_TITLE, state.window_open, ImGui.WindowFlags_NoCollapse())')
   luaunit.assertStrContains(source, "ImGui.TextColored(ctx, badge_color(\"accent\"), APP_TITLE)")
   luaunit.assertStrContains(source, "state.window_open = open")
   luaunit.assertStrContains(source, "if state.window_open then")
   luaunit.assertEquals(source:find('ImGui.Begin%(ctx, "REAPER Audio Tag", true,', 1, true), nil)
+end
+
+function tests.test_result_view_contains_write_tags_action()
+  local handle = assert(io.open("reaper/REAPER Audio Tag.lua", "rb"))
+  local source = handle:read("*a")
+  handle:close()
+
+  luaunit.assertStrContains(source, 'local tag_writeback = require("tag_writeback")')
+  luaunit.assertStrContains(source, 'ImGui.Button(ctx, "Write Tags to Project")')
+  luaunit.assertStrContains(source, "tag_writeback.write_result_with_undo")
+  luaunit.assertStrContains(source, 'state.notice_kind = ok and "success" or "warning"')
 end
 
 function tests.test_main_script_stops_live_job_after_result_and_keeps_log_artifacts()

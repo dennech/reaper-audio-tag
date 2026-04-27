@@ -11,6 +11,7 @@ local package_surface_tests = require('tests.lua.test_package_surface')
 local report_telemetry_tests = require('tests.lua.test_report_telemetry')
 local report_ui_state_tests = require('tests.lua.test_report_ui_state')
 local runtime_tests = require('tests.lua.test_runtime_client')
+local tag_writeback_tests = require('tests.lua.test_tag_writeback')
 
 for name, fn in pairs(audio_export_tests) do
   tests[name] = fn
@@ -41,6 +42,10 @@ for name, fn in pairs(report_ui_state_tests) do
 end
 
 for name, fn in pairs(runtime_tests) do
+  tests[name] = fn
+end
+
+for name, fn in pairs(tag_writeback_tests) do
   tests[name] = fn
 end
 
