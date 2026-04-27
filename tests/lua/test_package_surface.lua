@@ -189,7 +189,7 @@ function tests.test_current_index_has_no_configure_setup_or_python_runtime_when_
   luaunit.assertEquals(block:find("runtime/src", 1, true) ~= nil, false)
   luaunit.assertStrContains(block, "class_labels_indices.csv")
   luaunit.assertStrContains(block, "reaper-audio-tag-backend")
-  luaunit.assertStrContains(block, "CPU/GPU compute mode")
+  luaunit.assertStrContains(block, "supported `darwin` platform assets")
   luaunit.assertStrContains(block, "platform=\"darwin\"")
   luaunit.assertEquals(block:find("darwin%-arm64", 1, false) ~= nil, false)
   luaunit.assertStrContains(block, "releases/download/v0.4.6/reaper-audio-tag-backend-macos-arm64")
