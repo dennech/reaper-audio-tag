@@ -1,6 +1,12 @@
 # REAPER Audio Tag
 
-Local audio tagging for REAPER. Install the script with ReaPack, download the model from inside the REAPER window, then run analysis on one selected audio item.
+`REAPER Audio Tag` is a small REAPER action for fast clip-level audio inspection. Select one audio item, run the action, and get compact local `PANNs Cnn14` tags inside REAPER.
+
+Install it with ReaPack, download the ONNX model from inside the REAPER window once, then analyze audio locally without installing Python or leaving your DAW.
+
+![REAPER Audio Tag report window](docs/images/reaper-audio-tag-hero.png)
+
+_Current REAPER Audio Tag report window with top cues, tag chips, timing, and CPU/GPU status._
 
 ## What You Need
 
