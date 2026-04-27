@@ -11,7 +11,7 @@
 --
 --   No user-managed Python, venv, or manual model file selection is required.
 -- @changelog
---   - Simplified the first-run model download screen so users see one clear status and fewer technical paths.
+--   - Simplified the first-run ONNX model download screen so users see one clear status and fewer technical paths.
 --   - Bundled trusted certificate roots for the backend downloader to fix macOS HTTPS certificate failures.
 --   - Added friendlier download failure messages while keeping technical details in Advanced diagnostics.
 -- @provides

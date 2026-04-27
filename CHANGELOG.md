@@ -2,7 +2,7 @@
 
 ## 0.4.2
 
-- Simplified the first-run model download screen so users see one clear status, model size, and the main download action without repeated technical messages.
+- Simplified the first-run ONNX model download screen so users see one clear status, model size, and the main download action without repeated technical messages.
 - Fixed macOS HTTPS certificate failures in the packaged backend downloader by using a bundled trusted CA bundle for GitHub Release downloads.
 - Reworded download failures into user-facing messages and kept raw exception details in diagnostics/logs for troubleshooting.
 
