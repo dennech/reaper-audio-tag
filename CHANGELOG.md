@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.3
+
+- Fixed CoreML falling back to CPU on macOS by moving the CoreML cache to `~/Library/Caches/reaper-audio-tag/coreml-cache`, avoiding a packaged ONNX Runtime/CoreML path bug with `Application Support`.
+- Kept the first-run ONNX model download flow and release assets unchanged.
+
 ## 0.4.2
 
 - Simplified the first-run ONNX model download screen so users see one clear status, model size, and the main download action without repeated technical messages.

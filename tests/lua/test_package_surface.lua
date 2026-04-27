@@ -9,13 +9,13 @@ local function read_file(path)
 end
 
 local function current_version_block(index_xml)
-  local block = index_xml:match('<version name="0%.4%.2".-</version>')
+  local block = index_xml:match('<version name="0%.4%.3".-</version>')
   return block or ""
 end
 
 function tests.test_public_reapack_actions_are_main_and_debug_only()
   local source = read_file("reaper/REAPER Audio Tag.lua")
-  luaunit.assertStrContains(source, "-- @version 0.4.2")
+  luaunit.assertStrContains(source, "-- @version 0.4.3")
   luaunit.assertStrContains(source, "[nomain] REAPER Audio Tag - Debug Export.lua")
   luaunit.assertEquals(source:find("REAPER Audio Tag %- Configure%.lua", 1, false) ~= nil, false)
   luaunit.assertEquals(source:find("REAPER Audio Tag %- Setup%.lua", 1, false) ~= nil, false)
@@ -68,6 +68,7 @@ function tests.test_app_paths_resolve_reapack_data_backend_and_model_locations()
   luaunit.assertEquals(paths.data_dir, "/Users/test/Library/Application Support/REAPER/Data/reaper-panns-item-report")
   luaunit.assertEquals(paths.labels_path, "/Users/test/Library/Application Support/REAPER/Data/reaper-panns-item-report/metadata/class_labels_indices.csv")
   luaunit.assertEquals(paths.model_path, "/Users/test/Library/Application Support/REAPER/Data/reaper-panns-item-report/models/cnn14_waveform_clipwise_opset17.onnx")
+  luaunit.assertEquals(paths.model_cache_dir, path_utils.join(os.getenv("HOME"), "Library", "Caches", "reaper-audio-tag", "coreml-cache"))
   luaunit.assertEquals(paths.backend_candidates[2], "/Users/test/Library/Application Support/REAPER/Data/reaper-panns-item-report/bin/macos-arm64/reaper-audio-tag-backend")
   luaunit.assertEquals(paths.backend_candidates[3], "/Users/test/Library/Application Support/REAPER/Data/reaper-panns-item-report/bin/macos-x86_64/reaper-audio-tag-backend")
 end

@@ -43,6 +43,16 @@ local function resolve_backend_path(data_dir, os_name)
   return candidates[1], candidates
 end
 
+local function model_cache_dir(data_dir, os_name)
+  if tostring(os_name or ""):match("^OSX") then
+    local home = os.getenv("HOME")
+    if home and home ~= "" then
+      return path_utils.join(home, "Library", "Caches", "reaper-audio-tag", "coreml-cache")
+    end
+  end
+  return path_utils.join(data_dir, "coreml-cache")
+end
+
 function M.build()
   local resource_root = resource_dir()
   local repo_root = path_utils.dirname(script_dir())
@@ -66,7 +76,7 @@ function M.build()
     models_dir = path_utils.join(data_dir, "models"),
     model_path = path_utils.join(data_dir, "models", "cnn14_waveform_clipwise_opset17.onnx"),
     model_progress_path = path_utils.join(data_dir, "models", "cnn14_waveform_clipwise_opset17.progress.json"),
-    model_cache_dir = path_utils.join(data_dir, "coreml-cache"),
+    model_cache_dir = model_cache_dir(data_dir, os_name),
     os_name = os_name,
   }
 end

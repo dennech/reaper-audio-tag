@@ -1,5 +1,5 @@
 -- @description REAPER Audio Tag
--- @version 0.4.2
+-- @version 0.4.3
 -- @author dennech
 -- @link https://github.com/dennech/reaper-audio-tag
 -- @screenshot https://raw.githubusercontent.com/dennech/reaper-audio-tag/main/docs/images/reaper-audio-tag-hero.png
@@ -11,9 +11,8 @@
 --
 --   No user-managed Python, venv, or manual model file selection is required.
 -- @changelog
---   - Simplified the first-run ONNX model download screen so users see one clear status and fewer technical paths.
---   - Bundled trusted certificate roots for the backend downloader to fix macOS HTTPS certificate failures.
---   - Added friendlier download failure messages while keeping technical details in Advanced diagnostics.
+--   - Fixed CoreML fallback to CPU on macOS by moving the CoreML cache outside paths with spaces.
+--   - Kept the first-run ONNX model download flow and release assets unchanged.
 -- @provides
 --   [nomain] REAPER Audio Tag - Debug Export.lua
 --   [nomain] PANNs Item Report.lua
