@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.7
+
+- Fixed backend lookup on modern REAPER macOS builds that report `macOS-*` instead of the older `OSX*` value, preventing the plugin from falling back to the stale generic backend path.
+- The model/setup diagnostics now show the detected REAPER OS and the full backend candidate list, making ReaPack install path mismatches visible immediately.
+- Backend setup errors are now shown as warnings even when the ONNX model file is already downloaded and valid.
+
 ## 0.4.6
 
 - Fixed macOS ReaPack backend installation by publishing both Apple Silicon and Intel backend assets with the supported `darwin` platform filter.

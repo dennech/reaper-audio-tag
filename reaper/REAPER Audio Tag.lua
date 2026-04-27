@@ -1,5 +1,5 @@
 -- @description REAPER Audio Tag
--- @version 0.4.6
+-- @version 0.4.7
 -- @author dennech
 -- @link https://github.com/dennech/reaper-audio-tag
 -- @screenshot https://raw.githubusercontent.com/dennech/reaper-audio-tag/main/docs/images/reaper-audio-tag-hero.png
@@ -11,8 +11,8 @@
 --
 --   No user-managed Python, venv, or manual model file selection is required.
 -- @changelog
---   - Fix macOS ReaPack backend installation by using supported `darwin` platform assets for both Apple Silicon and Intel.
---   - Select the matching macOS backend locally by CPU architecture, with safe fallback candidates for repaired installs.
+--   - Detect modern REAPER macOS names such as `macOS-arm64` instead of only legacy `OSX*` values.
+--   - Show backend candidates in diagnostics and color backend setup errors as warnings.
 -- @provides
 --   [nomain] REAPER Audio Tag - Debug Export.lua
 --   [nomain] PANNs Item Report.lua
@@ -64,7 +64,7 @@ path_utils.ensure_dir(paths.tmp_dir)
 path_utils.ensure_dir(paths.jobs_dir)
 report_run_cleanup.prune_stale(paths)
 
-local PLUGIN_VERSION = "0.4.6"
+local PLUGIN_VERSION = "0.4.7"
 local APP_TITLE = "REAPER Audio Tag v" .. PLUGIN_VERSION
 local start_mode = _G.REAPER_AUDIO_TAG_START_MODE or "report"
 local start_message = _G.REAPER_AUDIO_TAG_OPEN_MESSAGE
@@ -607,7 +607,9 @@ local function render_model_setup()
       primary_message = model_status.message
     end
   end
-  local status_kind = (model_status.ok and not download_error) and "success" or "warning"
+  local primary_message_lower = tostring(primary_message or ""):lower()
+  local has_setup_error = download_error ~= nil or primary_message_lower:find("backend", 1, true) ~= nil
+  local status_kind = (model_status.ok and not has_setup_error) and "success" or "warning"
   ImGui.TextColored(ctx, badge_color(status_kind), tostring(primary_message))
   ImGui.TextDisabled(ctx, "Model size: " .. format_bytes(runtime_client.MODEL_SIZE_BYTES))
 
@@ -644,8 +646,14 @@ local function render_model_setup()
     if opened then
       ImGui.TextDisabled(ctx, "Model file")
       ImGui.TextWrapped(ctx, paths.model_path)
+      ImGui.TextDisabled(ctx, "REAPER OS")
+      ImGui.TextWrapped(ctx, tostring(paths.os_name or "unknown"))
       ImGui.TextDisabled(ctx, "Backend")
       ImGui.TextWrapped(ctx, paths.backend_path)
+      ImGui.TextDisabled(ctx, "Backend candidates")
+      for _, candidate in ipairs(paths.backend_candidates or {}) do
+        ImGui.BulletText(ctx, candidate)
+      end
       ImGui.TextDisabled(ctx, "Labels")
       ImGui.TextWrapped(ctx, paths.labels_path)
       ImGui.TextDisabled(ctx, "Checksum")

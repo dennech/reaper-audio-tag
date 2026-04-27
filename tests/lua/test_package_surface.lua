@@ -21,18 +21,47 @@ local function write_file(path, contents)
 end
 
 local function current_version_block(index_xml)
-  local block = index_xml:match('<version name="0%.4%.6".-</version>')
+  local block = index_xml:match('<version name="0%.4%.7".-</version>')
   return block or ""
 end
 
 function tests.test_public_reapack_actions_are_main_and_debug_only()
   local source = read_file("reaper/REAPER Audio Tag.lua")
-  luaunit.assertStrContains(source, "-- @version 0.4.6")
+  luaunit.assertStrContains(source, "-- @version 0.4.7")
   luaunit.assertStrContains(source, "[nomain] REAPER Audio Tag - Debug Export.lua")
   luaunit.assertEquals(source:find("REAPER Audio Tag %- Configure%.lua", 1, false) ~= nil, false)
   luaunit.assertEquals(source:find("REAPER Audio Tag %- Setup%.lua", 1, false) ~= nil, false)
   luaunit.assertEquals(path_utils.exists("reaper/REAPER Audio Tag - Configure.lua"), false)
   luaunit.assertEquals(path_utils.exists("reaper/REAPER Audio Tag - Setup.lua"), false)
+end
+
+function tests.test_app_paths_treats_modern_macos_getos_as_macos()
+  local original_reaper = _G.reaper
+  local original_arch = _G.REAPER_AUDIO_TAG_TEST_ARCH
+  local original_uname_s = _G.REAPER_AUDIO_TAG_TEST_UNAME_S
+  _G.REAPER_AUDIO_TAG_TEST_ARCH = "arm64"
+  _G.REAPER_AUDIO_TAG_TEST_UNAME_S = nil
+  _G.reaper = {
+    get_action_context = function()
+      return nil, "/Users/test/Library/Application Support/REAPER/Scripts/REAPER Audio Tag/REAPER Audio Tag.lua"
+    end,
+    get_ini_file = function()
+      return "/Users/test/Library/Application Support/REAPER/reaper.ini"
+    end,
+    GetOS = function()
+      return "macOS-arm64"
+    end,
+  }
+
+  local paths = app_paths.build()
+  _G.reaper = original_reaper
+  _G.REAPER_AUDIO_TAG_TEST_ARCH = original_arch
+  _G.REAPER_AUDIO_TAG_TEST_UNAME_S = original_uname_s
+
+  luaunit.assertEquals(paths.backend_path, "/Users/test/Library/Application Support/REAPER/Data/reaper-panns-item-report/bin/macos-arm64/reaper-audio-tag-backend")
+  luaunit.assertEquals(paths.backend_candidates[3], "/Users/test/Library/Application Support/REAPER/Data/reaper-panns-item-report/bin/reaper-audio-tag-backend")
+  luaunit.assertEquals(paths.backend_path:find("/bin/reaper%-audio%-tag%-backend$") ~= nil, false)
+  luaunit.assertEquals(paths.model_cache_dir, path_utils.join(os.getenv("HOME"), "Library", "Caches", "reaper-audio-tag", "coreml-cache"))
 end
 
 function tests.test_main_script_owns_first_run_model_screen()
@@ -151,6 +180,33 @@ function tests.test_app_paths_prefers_intel_backend_on_x86_64_macos()
   luaunit.assertEquals(paths.backend_candidates[3], "/Users/test/Library/Application Support/REAPER/Data/reaper-panns-item-report/bin/reaper-audio-tag-backend")
 end
 
+function tests.test_app_paths_uses_darwin_uname_when_reaper_os_is_unknown()
+  local original_reaper = _G.reaper
+  local original_arch = _G.REAPER_AUDIO_TAG_TEST_ARCH
+  local original_uname_s = _G.REAPER_AUDIO_TAG_TEST_UNAME_S
+  _G.REAPER_AUDIO_TAG_TEST_ARCH = "arm64"
+  _G.REAPER_AUDIO_TAG_TEST_UNAME_S = "Darwin"
+  _G.reaper = {
+    get_action_context = function()
+      return nil, "/Users/test/Library/Application Support/REAPER/Scripts/REAPER Audio Tag/REAPER Audio Tag.lua"
+    end,
+    get_ini_file = function()
+      return "/Users/test/Library/Application Support/REAPER/reaper.ini"
+    end,
+    GetOS = function()
+      return "Other"
+    end,
+  }
+
+  local paths = app_paths.build()
+  _G.reaper = original_reaper
+  _G.REAPER_AUDIO_TAG_TEST_ARCH = original_arch
+  _G.REAPER_AUDIO_TAG_TEST_UNAME_S = original_uname_s
+
+  luaunit.assertEquals(paths.backend_candidates[1], "/Users/test/Library/Application Support/REAPER/Data/reaper-panns-item-report/bin/macos-arm64/reaper-audio-tag-backend")
+  luaunit.assertEquals(paths.backend_candidates[3], "/Users/test/Library/Application Support/REAPER/Data/reaper-panns-item-report/bin/reaper-audio-tag-backend")
+end
+
 function tests.test_app_paths_keep_windows_cache_with_app_data()
   local original_reaper = _G.reaper
   _G.reaper = {
@@ -189,12 +245,12 @@ function tests.test_current_index_has_no_configure_setup_or_python_runtime_when_
   luaunit.assertEquals(block:find("runtime/src", 1, true) ~= nil, false)
   luaunit.assertStrContains(block, "class_labels_indices.csv")
   luaunit.assertStrContains(block, "reaper-audio-tag-backend")
-  luaunit.assertStrContains(block, "supported `darwin` platform assets")
+  luaunit.assertStrContains(block, "Detect modern REAPER macOS names")
   luaunit.assertStrContains(block, "platform=\"darwin\"")
   luaunit.assertEquals(block:find("darwin%-arm64", 1, false) ~= nil, false)
-  luaunit.assertStrContains(block, "releases/download/v0.4.6/reaper-audio-tag-backend-macos-arm64")
-  luaunit.assertStrContains(block, "releases/download/v0.4.6/reaper-audio-tag-backend-macos-x86_64")
-  luaunit.assertStrContains(block, "releases/download/v0.4.6/reaper-audio-tag-backend-windows-x64.exe")
+  luaunit.assertStrContains(block, "releases/download/v0.4.7/reaper-audio-tag-backend-macos-arm64")
+  luaunit.assertStrContains(block, "releases/download/v0.4.7/reaper-audio-tag-backend-macos-x86_64")
+  luaunit.assertStrContains(block, "releases/download/v0.4.7/reaper-audio-tag-backend-windows-x64.exe")
   luaunit.assertEquals(block:find("cnn14_waveform_clipwise_opset17.onnx", 1, true), nil)
 end
 

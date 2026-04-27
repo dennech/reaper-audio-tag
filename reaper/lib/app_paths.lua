@@ -23,21 +23,47 @@ local function executable_suffix(os_name)
   return ""
 end
 
+local function is_windows_os(os_name)
+  return tostring(os_name or ""):match("^Win") ~= nil
+end
+
+local function uname_s()
+  local override = rawget(_G, "REAPER_AUDIO_TAG_TEST_UNAME_S")
+  if override and override ~= "" then
+    return tostring(override)
+  end
+  return path_utils.capture_command("uname -s 2>/dev/null")
+end
+
+local function is_macos_os(os_name)
+  if is_windows_os(os_name) then
+    return false
+  end
+  local normalized = tostring(os_name or ""):lower()
+  if normalized:find("osx", 1, true) or normalized:find("mac", 1, true) or normalized:find("darwin", 1, true) then
+    return true
+  end
+  return tostring(uname_s() or ""):lower() == "darwin"
+end
+
+local function uname_m()
+  local override = rawget(_G, "REAPER_AUDIO_TAG_TEST_ARCH")
+  if override and override ~= "" then
+    return tostring(override)
+  end
+  return path_utils.capture_command("uname -m 2>/dev/null")
+end
+
 local function backend_candidates(data_dir, os_name)
   local suffix = executable_suffix(os_name)
-  if tostring(os_name or ""):match("^Win") then
+  if is_windows_os(os_name) then
     return {
       path_utils.join(data_dir, "bin", "windows-x64", "reaper-audio-tag-backend.exe"),
       path_utils.join(data_dir, "bin", "reaper-audio-tag-backend" .. suffix),
     }
   end
-  if tostring(os_name or ""):match("^OSX") then
-    local override_arch = rawget(_G, "REAPER_AUDIO_TAG_TEST_ARCH")
-    local arch = override_arch
-    if not arch or arch == "" then
-      arch = path_utils.capture_command("uname -m 2>/dev/null")
-    end
-    arch = tostring(arch or ""):lower()
+  if is_macos_os(os_name) then
+    local arch = tostring(uname_m() or ""):lower()
     local arm_backend = path_utils.join(data_dir, "bin", "macos-arm64", "reaper-audio-tag-backend")
     local intel_backend = path_utils.join(data_dir, "bin", "macos-x86_64", "reaper-audio-tag-backend")
     local generic_backend = path_utils.join(data_dir, "bin", "reaper-audio-tag-backend" .. suffix)
@@ -70,7 +96,7 @@ local function resolve_backend_path(data_dir, os_name)
 end
 
 local function model_cache_dir(data_dir, os_name)
-  if tostring(os_name or ""):match("^OSX") then
+  if is_macos_os(os_name) then
     local home = os.getenv("HOME")
     if home and home ~= "" then
       return path_utils.join(home, "Library", "Caches", "reaper-audio-tag", "coreml-cache")
