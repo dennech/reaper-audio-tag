@@ -16,35 +16,39 @@ local function resource_dir()
   return path_utils.dirname(ini_path)
 end
 
-local function resolve_runtime_source(resource_root, data_dir, repo_root)
-  local app_scoped_runtime_source = path_utils.join(data_dir, "runtime", "src")
-  local legacy_runtime_source = path_utils.join(resource_root, "Data", "runtime", "src")
-  local checkout_runtime_source = path_utils.join(repo_root, "reaper", "reaper-panns-item-report", "runtime", "src")
-  local checkout_legacy_runtime_source = path_utils.join(repo_root, "reaper", "runtime", "src")
+local function executable_suffix(os_name)
+  if tostring(os_name or ""):match("^Win") then
+    return ".exe"
+  end
+  return ""
+end
 
-  if path_utils.directory_exists(app_scoped_runtime_source) then
-    return app_scoped_runtime_source, "data_app", app_scoped_runtime_source, legacy_runtime_source, checkout_runtime_source
-  end
-  if path_utils.directory_exists(legacy_runtime_source) then
-    return legacy_runtime_source, "data_legacy", app_scoped_runtime_source, legacy_runtime_source, checkout_runtime_source
-  end
-  if path_utils.directory_exists(checkout_runtime_source) then
-    return checkout_runtime_source, "checkout", app_scoped_runtime_source, legacy_runtime_source, checkout_runtime_source
-  end
-  if path_utils.directory_exists(checkout_legacy_runtime_source) then
-    return checkout_legacy_runtime_source, "checkout", app_scoped_runtime_source, legacy_runtime_source, checkout_runtime_source
-  end
+local function backend_candidates(data_dir, os_name)
+  local suffix = executable_suffix(os_name)
+  return {
+    path_utils.join(data_dir, "bin", "reaper-audio-tag-backend" .. suffix),
+    path_utils.join(data_dir, "bin", "macos-arm64", "reaper-audio-tag-backend"),
+    path_utils.join(data_dir, "bin", "macos-x86_64", "reaper-audio-tag-backend"),
+    path_utils.join(data_dir, "bin", "windows-x64", "reaper-audio-tag-backend.exe"),
+  }
+end
 
-  return app_scoped_runtime_source, "missing", app_scoped_runtime_source, legacy_runtime_source, checkout_runtime_source
+local function resolve_backend_path(data_dir, os_name)
+  local candidates = backend_candidates(data_dir, os_name)
+  for _, candidate in ipairs(candidates) do
+    if path_utils.exists(candidate) then
+      return candidate, candidates
+    end
+  end
+  return candidates[1], candidates
 end
 
 function M.build()
   local resource_root = resource_dir()
   local repo_root = path_utils.dirname(script_dir())
-  local data_dir = path_utils.join(resource_root, "Data", "reaper-panns-item-report")
-  local runtime_source_root, runtime_source_origin, runtime_source_expected_root, runtime_source_legacy_root, checkout_runtime_source =
-    resolve_runtime_source(resource_root, data_dir, repo_root)
   local os_name = reaper.GetOS()
+  local data_dir = path_utils.join(resource_root, "Data", "reaper-panns-item-report")
+  local backend_path, backend_candidates_list = resolve_backend_path(data_dir, os_name)
 
   return {
     script_path = script_path(),
@@ -55,15 +59,14 @@ function M.build()
     jobs_dir = path_utils.join(data_dir, "jobs"),
     tmp_dir = path_utils.join(data_dir, "tmp"),
     logs_dir = path_utils.join(data_dir, "logs"),
-    config_path = path_utils.join(data_dir, "config.json"),
-    runtime_source_root = runtime_source_root,
-    runtime_source_origin = runtime_source_origin,
-    runtime_source_expected_root = runtime_source_expected_root,
-    runtime_source_legacy_root = runtime_source_legacy_root,
-    checkout_runtime_source = checkout_runtime_source,
-    runtime_dir = path_utils.join(data_dir, "runtime"),
+    backend_dir = path_utils.join(data_dir, "bin"),
+    backend_path = backend_path,
+    backend_candidates = backend_candidates_list,
+    labels_path = path_utils.join(data_dir, "metadata", "class_labels_indices.csv"),
     models_dir = path_utils.join(data_dir, "models"),
-    configure_script_path = path_utils.join(script_dir(), "REAPER Audio Tag - Configure.lua"),
+    model_path = path_utils.join(data_dir, "models", "cnn14_waveform_clipwise_opset17.onnx"),
+    model_progress_path = path_utils.join(data_dir, "models", "cnn14_waveform_clipwise_opset17.progress.json"),
+    model_cache_dir = path_utils.join(data_dir, "coreml-cache"),
     os_name = os_name,
   }
 end

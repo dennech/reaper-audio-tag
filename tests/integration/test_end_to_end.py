@@ -4,77 +4,67 @@ import json
 import os
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
-from tests.python.audio_fixtures import generate_audio_fixtures
-from reaper_panns_runtime.contract import SCHEMA_VERSION, validate_response
+from reaper_audio_tag_backend.cli import main
+from reaper_audio_tag_backend.json_io import read_json
+from reaper_audio_tag_backend.model_store import sha256_file
 
 
-def test_runtime_cli_fake_mode_and_lua_runner_work_together() -> None:
-    with tempfile.TemporaryDirectory() as temp_dir:
-        root = Path(temp_dir)
-        repo_root = root / "repo"
-        repo_root.mkdir(parents=True, exist_ok=True)
-        resource_dir = root / "REAPER"
-        data_dir = resource_dir / "Data" / "reaper-panns-item-report"
-        data_dir.mkdir(parents=True, exist_ok=True)
-        model_path = repo_root / ".local-models" / "Cnn14_mAP=0.431.pth"
-        model_path.parent.mkdir(parents=True, exist_ok=True)
-        model_path.write_bytes(b"placeholder")
-        (data_dir / "config.json").write_text(
-            json.dumps(
-                {
-                    "schema_version": SCHEMA_VERSION,
-                    "model": {"name": "Cnn14", "path": str(model_path)},
-                    "runtime": {"preferred_backend": "cpu", "cpu_threads": 2},
-                },
-                indent=2,
-            )
-            + "\n",
-            encoding="utf-8",
-        )
+def test_backend_download_contract_and_lua_suite_work_together(tmp_path: Path) -> None:
+    source = tmp_path / "source.onnx"
+    source.write_bytes(b"onnx fixture")
+    digest = sha256_file(source)
+    model = tmp_path / "Data" / "reaper-panns-item-report" / "models" / "cnn14_waveform_clipwise_opset17.onnx"
+    progress = tmp_path / "progress.json"
+    result = tmp_path / "download-result.json"
+    log = tmp_path / "download.log"
 
-        fixtures = generate_audio_fixtures(root / "fixtures")
-        item = next(fixture for fixture in fixtures["fixtures"] if fixture["name"] == "mix_tone_noise")
-        request = {
-            "schema_version": SCHEMA_VERSION,
-            "temp_audio_path": item["path"],
-            "item_metadata": {
-                "item_id": "item-42",
-                "take_name": "Mix Take",
-                "selected": True,
-            },
-            "requested_backend": "mps",
-            "timeout_sec": 12,
-        }
-        request_path = root / "request.json"
-        request_path.write_text(json.dumps(request, indent=2) + "\n", encoding="utf-8")
+    code = main(
+        [
+            "download-model",
+            "--url",
+            source.as_uri(),
+            "--output",
+            str(model),
+            "--sha256",
+            digest,
+            "--size",
+            str(source.stat().st_size),
+            "--progress-file",
+            str(progress),
+            "--result-file",
+            str(result),
+            "--log-file",
+            str(log),
+        ]
+    )
 
-        cli = subprocess.run(
-            [sys.executable, "-m", "reaper_panns_runtime.cli", "analyze", "--request-file", str(request_path)],
-            check=False,
-            text=True,
-            capture_output=True,
-            env={
-                **os.environ,
-                "PYTHONPATH": str(Path.cwd() / "reaper" / "reaper-panns-item-report" / "runtime" / "src"),
-                "REAPER_RESOURCE_PATH": str(resource_dir),
-                "REAPER_PANNS_REPO_ROOT": str(repo_root),
-                "REAPER_PANNS_FAKE_MODEL": "1",
-            },
-        )
-        assert cli.returncode == 0
-        response = json.loads(cli.stdout)
-        assert response["backend"] == "fake"
-        assert response["status"] == "ok"
-        assert response["attempted_backends"] == ["fake"]
-        validate_response(response)
+    assert code == 0
+    assert read_json(result)["status"] == "ok"
+    assert read_json(progress)["status"] == "done"
+    assert model.read_bytes() == source.read_bytes()
 
-        lua = subprocess.run(
-            ["lua", "tests/lua/run_tests.lua"],
-            check=False,
-            text=True,
-            capture_output=True,
-        )
-        assert lua.returncode == 0, lua.stdout + lua.stderr
+    lua = subprocess.run(
+        ["lua", "tests/lua/run_tests.lua"],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+    assert lua.returncode == 0, lua.stdout + lua.stderr
+
+
+def test_backend_cli_self_test_writes_json(tmp_path: Path) -> None:
+    result = tmp_path / "self-test.json"
+    completed = subprocess.run(
+        [sys.executable, "-m", "reaper_audio_tag_backend", "self-test", "--result-file", str(result)],
+        check=False,
+        text=True,
+        capture_output=True,
+        env={**os.environ, "PYTHONPATH": str(Path.cwd() / "backend")},
+    )
+
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    payload = json.loads(result.read_text(encoding="utf-8"))
+    assert payload["status"] == "ok"
+    assert isinstance(payload["providers"], list)

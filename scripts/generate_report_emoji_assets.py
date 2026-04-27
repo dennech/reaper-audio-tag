@@ -13,7 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 ASSET_DIR = ROOT / "reaper" / "assets" / "noto-emoji" / "png128"
-CSV_PATH = ROOT / "reaper" / "runtime" / "src" / "reaper_panns_runtime" / "_vendor" / "metadata" / "class_labels_indices.csv"
+CSV_PATH = ROOT / "reaper" / "data" / "class_labels_indices.csv"
 ASSET_OUTPUT = ROOT / "reaper" / "lib" / "report_icon_assets.lua"
 MAP_OUTPUT = ROOT / "reaper" / "lib" / "report_icon_map.lua"
 

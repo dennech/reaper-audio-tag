@@ -1,94 +1,65 @@
 # Troubleshooting
 
-## `ReaImGui` is missing
+## ReaImGui Is Missing
 
-- Open `Extensions -> ReaPack -> Browse Packages...`.
-- Search for `ReaImGui: ReaScript binding for Dear ImGui`.
-- Install it and restart REAPER.
+Install `ReaImGui: ReaScript binding for Dear ImGui` from ReaPack, then restart REAPER.
 
-## `REAPER Audio Tag: Configure` is missing from the Actions list
+## Backend Is Missing
 
-- Confirm that the `REAPER Audio Tag` package is installed through this repo's ReaPack URL.
-- If needed, re-import:
+If the window says the backend is missing, the ReaPack package did not install completely.
 
-  `https://raw.githubusercontent.com/dennech/reaper-audio-tag/main/index.xml`
+Try:
 
-- Reinstall the package from ReaPack and rescan the Actions list.
+1. `Extensions -> ReaPack -> Synchronize packages`.
+2. Update `REAPER Audio Tag`.
+3. Restart REAPER.
 
-## `Configure` says Python 3.11 was not found
+The backend should be installed under:
 
-- Verify the path in Terminal:
-
-```bash
-"/path/to/python" --version
+```text
+REAPER/Data/reaper-panns-item-report/bin/
 ```
 
-- Prefer the Python environment folder created during setup. A direct Python executable path also works.
-- Good examples:
-  `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/venv`
-  `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/venv/bin/python`
-  `/opt/homebrew/bin/python3.11`
-  `/usr/local/bin/python3.11`
-- The long `Cellar/.../Python.framework/...` path can work, but the local venv folder is preferred because it is where the required packages are installed.
-- If needed, recreate the venv with `python3.11 -m venv ...`.
+## Model Download Failed
 
-## `Configure` says dependencies are missing
+Click `Download Model` again. The download is verified by file size and SHA-256, so a partial or corrupted download is rejected safely.
 
-- Activate the same environment that you selected in `Configure`.
-- Reinstall the pinned dependencies:
+Expected model:
 
-```bash
-python -m pip install \
-  "numpy>=1.26,<2.0" \
-  "soundfile>=0.12,<1.0" \
-  "torch==2.6.0" \
-  "torchaudio==2.6.0" \
-  "torchlibrosa==0.1.0"
+```text
+cnn14_waveform_clipwise_opset17.onnx
+sha256 deb65c5a2d291b3ce4ebf2360af71072b789ba11a4214ef77406b89ab97333aa
 ```
 
-## `Configure` rejects the model file
+The model is about 327 MB. A slow connection can make the first download take a while.
 
-- Confirm the file name is exactly `Cnn14_mAP=0.431.pth`.
-- Choose the file itself, not the folder that contains it.
-- Confirm the checksum:
+## Checksum Mismatch
 
-```bash
-shasum -a 256 /path/to/Cnn14_mAP=0.431.pth
+Delete the broken model file from:
+
+```text
+REAPER/Data/reaper-panns-item-report/models/
 ```
 
-- Expected value:
+Then run `REAPER Audio Tag` and click `Download Model` again.
 
-  `0dc499e40e9761ef5ea061ffc77697697f277f6a960894903df3ada000e34b31`
+## First macOS Run Is Slow
 
-## The main action keeps opening `Configure`
+On macOS, CoreML can compile and cache the model the first time it runs. Later runs should be faster.
 
-- Save a new configuration from `REAPER Audio Tag: Configure`.
-- Make sure the Python path still exists and is executable.
-- Make sure the model file still exists at the saved location.
-- If you previously used the bundled-runtime flow, resave the config in the new transparent format.
+## GPU Is Not Used
 
-## `Configure` says the shipped runtime source is missing
+The backend tries the native accelerator first:
 
-- Open `Extensions -> ReaPack -> Synchronize packages`.
-- Update `REAPER Audio Tag` to the latest version from this repo's ReaPack URL.
-- Reopen `REAPER Audio Tag: Configure`.
-- The shipped runtime should install into `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/runtime/src/...`.
-- If you previously installed `v0.3.4`, `REAPER Audio Tag` will still accept the temporary legacy path `~/Library/Application Support/REAPER/Data/runtime/src/...` until you resync or reinstall.
-- If the new app-scoped path is still missing after a sync, reinstall the package from this repo's ReaPack URL.
+- macOS: CoreML;
+- Windows: DirectML.
 
-## The first run is slow
+If that provider is unavailable or fails, the backend falls back to CPU so analysis can still finish.
 
-- That is expected on the first run.
-- `torch` import and model loading can take noticeable time.
+## Analysis Does Not Start
 
-## Where the project stores its own data
+Make sure exactly one audio item is selected before running `REAPER Audio Tag`.
 
-- `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/config.json`
-- `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/jobs`
-- `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/tmp`
-- `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/logs`
+## Debug Export
 
-## Developer note
-
-- Source checkouts can use a local venv and `scripts/create_local_venv_macos.sh`.
-- That is not part of the normal public install flow.
+Use `REAPER Audio Tag - Debug Export` if you need to check whether REAPER can export the selected item into the temporary WAV used by the backend.

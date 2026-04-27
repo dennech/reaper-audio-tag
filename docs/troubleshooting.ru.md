@@ -1,94 +1,65 @@
 # Troubleshooting
 
-## Не хватает `ReaImGui`
+## Не Установлен ReaImGui
 
-- Открой `Extensions -> ReaPack -> Browse Packages...`.
-- Найди `ReaImGui: ReaScript binding for Dear ImGui`.
-- Установи пакет и перезапусти REAPER.
+Установи `ReaImGui: ReaScript binding for Dear ImGui` через ReaPack и перезапусти REAPER.
 
-## В Actions list нет `REAPER Audio Tag: Configure`
+## Backend Не Найден
 
-- Убедись, что пакет `REAPER Audio Tag` установлен через ReaPack URL этого проекта.
-- Если нужно, заново импортируй:
+Если окно пишет, что backend missing, значит ReaPack-пакет установился не полностью.
 
-  `https://raw.githubusercontent.com/dennech/reaper-audio-tag/main/index.xml`
+Попробуй:
 
-- Переустанови пакет из ReaPack и заново обнови Actions list.
+1. `Extensions -> ReaPack -> Synchronize packages`.
+2. Обновить `REAPER Audio Tag`.
+3. Перезапустить REAPER.
 
-## `Configure` пишет, что Python 3.11 не найден
+Backend должен лежать здесь:
 
-- Проверь путь в Terminal:
-
-```bash
-"/path/to/python" --version
+```text
+REAPER/Data/reaper-panns-item-report/bin/
 ```
 
-- Лучше указывать папку Python environment, созданную на шаге установки. Прямой путь к Python executable тоже работает.
-- Хорошие примеры:
-  `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/venv`
-  `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/venv/bin/python`
-  `/opt/homebrew/bin/python3.11`
-  `/usr/local/bin/python3.11`
-- Длинный путь вида `Cellar/.../Python.framework/...` тоже может работать, но локальная папка venv предпочтительнее, потому что именно там стоят нужные пакеты.
-- Если нужно, пересоздай venv через `python3.11 -m venv ...`.
+## Не Получилось Скачать Модель
 
-## `Configure` пишет, что не хватает зависимостей
+Нажми `Download Model` ещё раз. Файл проверяется по размеру и SHA-256, поэтому неполная или битая загрузка безопасно отклоняется.
 
-- Активируй тот же environment, который выбрал в `Configure`.
-- Переустанови pinned dependencies:
+Ожидаемая модель:
 
-```bash
-python -m pip install \
-  "numpy>=1.26,<2.0" \
-  "soundfile>=0.12,<1.0" \
-  "torch==2.6.0" \
-  "torchaudio==2.6.0" \
-  "torchlibrosa==0.1.0"
+```text
+cnn14_waveform_clipwise_opset17.onnx
+sha256 deb65c5a2d291b3ce4ebf2360af71072b789ba11a4214ef77406b89ab97333aa
 ```
 
-## `Configure` отклоняет файл модели
+Модель весит около 327 MB. На медленном соединении первая загрузка может занять время.
 
-- Проверь, что имя файла ровно `Cnn14_mAP=0.431.pth`.
-- Выбирай сам файл, а не папку, в которой он лежит.
-- Проверь checksum:
+## Checksum Mismatch
 
-```bash
-shasum -a 256 /path/to/Cnn14_mAP=0.431.pth
+Удали битый файл модели из:
+
+```text
+REAPER/Data/reaper-panns-item-report/models/
 ```
 
-- Ожидаемое значение:
+Потом запусти `REAPER Audio Tag` и нажми `Download Model` снова.
 
-  `0dc499e40e9761ef5ea061ffc77697697f277f6a960894903df3ada000e34b31`
+## Первый Запуск На macOS Медленный
 
-## Основной action всё время открывает `Configure`
+На macOS CoreML может компилировать и кэшировать модель при первом запуске. Следующие запуски обычно быстрее.
 
-- Сохрани новую конфигурацию через `REAPER Audio Tag: Configure`.
-- Убедись, что путь к Python всё ещё существует и executable.
-- Убедись, что файл модели всё ещё существует по сохранённому пути.
-- Если раньше использовался bundled-runtime flow, пересохрани config в новом прозрачном формате.
+## GPU Не Используется
 
-## `Configure` пишет, что в пакете не хватает runtime source
+Backend сначала пробует native acceleration:
 
-- Открой `Extensions -> ReaPack -> Synchronize packages`.
-- Обнови `REAPER Audio Tag` до последней версии из ReaPack URL этого проекта.
-- Снова открой `REAPER Audio Tag: Configure`.
-- Встроенный runtime должен устанавливаться в `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/runtime/src/...`.
-- Если раньше был установлен `v0.3.4`, `REAPER Audio Tag` временно примет legacy path `~/Library/Application Support/REAPER/Data/runtime/src/...`, пока пакет не будет пересинхронизирован или переустановлен.
-- Если новый app-scoped path всё ещё не появился после sync, переустанови пакет из ReaPack URL этого проекта.
+- macOS: CoreML;
+- Windows: DirectML.
 
-## Первый запуск медленный
+Если provider недоступен или падает, backend переключается на CPU, чтобы анализ всё равно завершился.
 
-- Это нормально для первого запуска.
-- Импорт `torch` и загрузка модели могут занимать заметное время.
+## Анализ Не Стартует
 
-## Где проект хранит свои данные
+Проверь, что выбран ровно один audio item перед запуском `REAPER Audio Tag`.
 
-- `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/config.json`
-- `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/jobs`
-- `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/tmp`
-- `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/logs`
+## Debug Export
 
-## Developer note
-
-- Source checkout может использовать локальный venv и `scripts/create_local_venv_macos.sh`.
-- Это не входит в обычный публичный install flow.
+Используй `REAPER Audio Tag - Debug Export`, если нужно проверить, может ли REAPER экспортировать выбранный item во временный WAV для backend.

@@ -19,7 +19,7 @@ jobs:
       - name: Install Python test dependencies
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip install "numpy>=1.26,<2.0" "soundfile>=0.12,<1.0" "pytest>=8.2,<9.0"
+          python3 -m pip install -e ".[dev]"
 
       - name: Set up Lua and pandoc
         run: |
@@ -37,6 +37,10 @@ jobs:
       - name: Run Python tests
         run: |
           python3 tests/scripts/run_python_tests.py --scope python
+
+      - name: Backend self-test
+        run: |
+          python3 -m reaper_audio_tag_backend self-test --result-file /tmp/reaper-audio-tag-backend-self-test.json
 
       - name: Run integration tests
         run: |

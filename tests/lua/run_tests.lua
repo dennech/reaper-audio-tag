@@ -7,7 +7,7 @@ local audio_export_tests = require('tests.lua.test_audio_export')
 local report_icon_tests = require('tests.lua.test_report_icons')
 local report_tests = require('tests.lua.test_report_formatter')
 local report_cleanup_tests = require('tests.lua.test_report_run_cleanup')
-local setup_runtime_tests = require('tests.lua.test_setup_runtime')
+local package_surface_tests = require('tests.lua.test_package_surface')
 local report_telemetry_tests = require('tests.lua.test_report_telemetry')
 local report_ui_state_tests = require('tests.lua.test_report_ui_state')
 local runtime_tests = require('tests.lua.test_runtime_client')
@@ -28,7 +28,7 @@ for name, fn in pairs(report_cleanup_tests) do
   tests[name] = fn
 end
 
-for name, fn in pairs(setup_runtime_tests) do
+for name, fn in pairs(package_surface_tests) do
   tests[name] = fn
 end
 

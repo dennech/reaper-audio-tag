@@ -1,30 +1,28 @@
 -- @description REAPER Audio Tag
--- @version 0.3.8
+-- @version 0.4.0
 -- @author dennech
 -- @link https://github.com/dennech/reaper-audio-tag
 -- @screenshot https://raw.githubusercontent.com/dennech/reaper-audio-tag/main/docs/images/reaper-audio-tag-hero.png
 -- @about
---   `REAPER Audio Tag` is a macOS-only REAPER action for local clip-level audio tagging.
+--   `REAPER Audio Tag` is a REAPER action for local clip-level audio tagging.
 --
---   ReaPack installs the Lua UI and the project's shipped Python source only.
---   You install Python 3.11, the Python dependencies, and `Cnn14_mAP=0.431.pth` yourself.
+--   ReaPack installs the Lua UI and a platform backend. On first run, click
+--   `Download Model` to fetch the ONNX Cnn14 model into REAPER's data folder.
 --
---   Run `REAPER Audio Tag: Configure` to validate the Python and model paths before analysis.
+--   No user-managed Python, venv, or manual model file selection is required.
 -- @changelog
---   - Removed `Save and Run` from `Configure` so configuration can only validate and save paths.
---   - Kept analysis launch exclusively in the main `REAPER Audio Tag` action.
---   - Added regression coverage to ensure Configure cannot start inference.
+--   - Replaced the old manual path setup flow with first-run ONNX model download.
+--   - Switched analysis launch to a self-contained backend executable installed by ReaPack.
+--   - Removed the separate configuration action and Python package contents.
 -- @provides
---   [main] REAPER Audio Tag - Configure.lua
 --   [nomain] REAPER Audio Tag - Debug Export.lua
 --   [nomain] PANNs Item Report.lua
 --   [nomain] PANNs Item Report - Debug Export.lua
 --   [nomain] lib/*.lua
---   [data] reaper-panns-item-report/runtime/src/reaper_panns_runtime/*.py
---   [data] reaper-panns-item-report/runtime/src/reaper_panns_runtime/_vendor/*.py
---   [data] reaper-panns-item-report/runtime/src/reaper_panns_runtime/_vendor/panns/*.py
---   [data] reaper-panns-item-report/runtime/src/reaper_panns_runtime/_vendor/metadata/*.csv
---   [data] reaper-panns-item-report/runtime/src/reaper_panns_runtime/_vendor/panns/LICENSE.MIT
+--   [data] data/class_labels_indices.csv > reaper-panns-item-report/metadata/class_labels_indices.csv
+--   [darwin-arm64 data] reaper-panns-item-report/bin/macos-arm64/reaper-audio-tag-backend https://github.com/dennech/reaper-audio-tag/releases/download/v$version/reaper-audio-tag-backend-macos-arm64
+--   [darwin64 data] reaper-panns-item-report/bin/macos-x86_64/reaper-audio-tag-backend https://github.com/dennech/reaper-audio-tag/releases/download/v$version/reaper-audio-tag-backend-macos-x86_64
+--   [win64 data] reaper-panns-item-report/bin/windows-x64/reaper-audio-tag-backend.exe https://github.com/dennech/reaper-audio-tag/releases/download/v$version/reaper-audio-tag-backend-windows-x64.exe
 
 local _, script_path = reaper.get_action_context()
 local script_dir = script_path:match("^(.*[\\/])") or "."
@@ -35,7 +33,6 @@ package.path = table.concat({
 
 local app_paths = require("app_paths")
 local audio_export = require("audio_export")
-local configure_runtime = require("configure_runtime")
 local path_utils = require("path_utils")
 local report_icons = require("report_icons")
 local report_presenter = require("report_presenter")
@@ -89,12 +86,12 @@ local state = {
   export_log_file = nil,
   notice = nil,
   run_artifacts = nil,
-  configure = {
-    initialized = false,
-    python_path = "",
-    model_path = "",
-    validation = nil,
-    message = nil,
+  setup = {
+    message = start_message,
+    model_status = nil,
+    download_job = nil,
+    download_progress = nil,
+    download_result = nil,
   },
   ui = {
     base_font = nil,
@@ -345,89 +342,31 @@ local function set_result(result)
   invalidate_view_model()
 end
 
-local function apply_configure_draft(draft, message)
-  draft = draft or configure_runtime.empty_draft(paths)
-  state.configure.python_path = draft.python_path or ""
-  state.configure.model_path = draft.model_path or ""
-  state.configure.validation = nil
-  state.configure.message = message
-  state.configure.initialized = true
+local function refresh_model_status(options)
+  state.setup.model_status = runtime_client.model_status(paths, options or {})
+  return state.setup.model_status
 end
 
-local function open_configure(message, draft)
-  if not draft and not state.configure.initialized then
-    local default_draft, default_message = configure_runtime.prefill_draft(paths)
-    draft = default_draft
-    if not message or message == "" then
-      message = default_message
-    end
-  end
-  if draft or not state.configure.initialized then
-    apply_configure_draft(draft, message)
-  elseif message and message ~= "" then
-    state.configure.message = message
-  end
-  state.screen = "configure"
+local function open_model_setup(message, options)
+  state.screen = "setup"
+  state.setup.message = message or state.setup.message
   state.last_error = message or state.last_error
+  refresh_model_status(options or { verify_checksum = false })
 end
 
-local function ensure_configure_ready()
-  if state.configure.initialized then
-    return
-  end
-  local draft, message = configure_runtime.prefill_draft(paths)
-  apply_configure_draft(draft, message)
-end
-
-local function validate_configure()
-  ensure_configure_ready()
-  local validation = configure_runtime.validate_draft(paths, {
-    python_path = state.configure.python_path,
-    model_path = state.configure.model_path,
-  })
-  validation.python_path = state.configure.python_path
-  validation.model_path = state.configure.model_path
-  state.configure.validation = validation
-  state.configure.message = validation.ok and "Validation passed. You can save this configuration." or nil
-  if not validation.ok then
-    if validation.runtime and not validation.runtime.ok then
-      state.last_error = validation.runtime.message
-    elseif validation.python and not validation.python.ok then
-      state.last_error = validation.python.message
-    elseif validation.model and not validation.model.ok then
-      state.last_error = validation.model.message
-    end
-  else
-    state.last_error = nil
-  end
-  return validation
-end
-
-local function save_configuration()
-  local validation = state.configure.validation
-  if not configure_runtime.validation_matches_draft(validation, {
-    python_path = state.configure.python_path,
-    model_path = state.configure.model_path,
-  }) then
-    validation = validate_configure()
-  end
-  if not validation or not validation.ok then
+local function backend_ready_or_setup()
+  if not path_utils.exists(paths.backend_path) then
+    open_model_setup("The REAPER Audio Tag backend is missing. Run Extensions -> ReaPack -> Synchronize packages and update this package.")
     return false
   end
-
-  local ok, payload_or_err = configure_runtime.save(paths, {
-    python_path = state.configure.python_path,
-    model_path = state.configure.model_path,
-  }, validation)
-  if not ok then
-    state.last_error = payload_or_err
+  if not paths.os_name:match("^Win") and not path_utils.is_executable(paths.backend_path) then
+    path_utils.run_command("chmod 755 " .. path_utils.sh_quote(paths.backend_path))
+  end
+  if not paths.os_name:match("^Win") and not path_utils.is_executable(paths.backend_path) then
+    open_model_setup("The REAPER Audio Tag backend is installed but is not executable. Run ReaPack synchronize/update again.")
     return false
   end
-
-  state.last_error = nil
-  state.notice = "Configuration saved."
-  state.configure.message = "Configuration saved. Select one audio item and run REAPER Audio Tag."
-  return true, payload_or_err
+  return true
 end
 
 local function current_view_model()
@@ -457,8 +396,8 @@ local function status_chip()
   if state.screen == "error" then
     return "Oops", "error", "error"
   end
-  if state.screen == "configure" then
-    return "Configure", "accent", "details"
+  if state.screen == "setup" then
+    return "Model", "accent", "details"
   end
   return "Warm up", "accent", "details"
 end
@@ -474,7 +413,7 @@ local function internal_ui_error_result(message)
     predictions = {},
     highlights = {},
     warnings = { "The report window hit an internal UI rendering error." },
-    model_status = { name = "Cnn14", source = "configured python" },
+    model_status = { name = "Cnn14 ONNX", source = "downloaded model" },
     item = {},
     error = { code = "ui_render_failed", message = message },
   }
@@ -482,9 +421,12 @@ end
 
 local function start_analysis(options)
   options = options or {}
-  local config_status = configure_runtime.saved_config_status(paths)
-  if not config_status.ok then
-    open_configure(config_status.message, config_status.draft)
+  if not backend_ready_or_setup() then
+    return
+  end
+  local model_status = runtime_client.model_status(paths, { verify_checksum = true })
+  if not model_status.ok then
+    open_model_setup(model_status.message, { verify_checksum = true })
     return
   end
   local preserve_result_if_selection_invalid = options.preserve_result_if_selection_invalid == true
@@ -532,7 +474,7 @@ local function start_analysis(options)
       predictions = {},
       highlights = {},
       warnings = {},
-      model_status = { name = "Cnn14", source = "configured python" },
+      model_status = { name = "Cnn14 ONNX", source = "downloaded model" },
       item = export_metadata or {},
       error = { code = "export_failed", message = err },
     })
@@ -561,15 +503,12 @@ local function ensure_started()
     return
   end
 
-  if state.intent == "configure" then
-    local draft, message = configure_runtime.prefill_draft(paths)
-    open_configure(start_message or message, draft)
+  if not backend_ready_or_setup() then
     return
   end
-
-  local config_status = configure_runtime.saved_config_status(paths)
-  if not config_status.ok then
-    open_configure(config_status.message, config_status.draft)
+  local model_status = runtime_client.model_status(paths, { verify_checksum = false })
+  if not model_status.ok then
+    open_model_setup(start_message or model_status.message)
     return
   end
 
@@ -587,176 +526,124 @@ local function render_header()
   ImGui.Separator(ctx)
 end
 
-local function render_path_row(label, path_value, status, browse_label, browse_fn)
-  local changed_any = false
-  ImGui.Text(ctx, label)
-  local changed, new_value = ImGui.InputText(ctx, "##" .. label, path_value or "")
-  if changed then
-    path_value = new_value
-    changed_any = true
+local function format_bytes(size)
+  local numeric = tonumber(size) or 0
+  if numeric >= 1024 * 1024 * 1024 then
+    return string.format("%.2f GB", numeric / (1024 * 1024 * 1024))
   end
-  ImGui.SameLine(ctx)
-  if ImGui.Button(ctx, browse_label) then
-    local selected = browse_fn(path_value)
-    if selected and selected ~= "" then
-      path_value = selected
-      changed_any = true
-    end
+  if numeric >= 1024 * 1024 then
+    return string.format("%.1f MB", numeric / (1024 * 1024))
   end
-  if status and status.message then
-    ImGui.TextColored(ctx, badge_color(status.level or (status.ok and "success" or "warning")), status.message)
+  if numeric >= 1024 then
+    return string.format("%.1f KB", numeric / 1024)
   end
-  return path_value, changed_any
+  return tostring(numeric) .. " bytes"
 end
 
-local function python_browse_path()
-  return configure_runtime.suggested_python_path(paths, state.configure.python_path)
-end
-
-local function model_browse_path()
-  return configure_runtime.suggested_model_path(paths, state.configure.model_path)
-end
-
-local function folder_initial_path(initial_path)
-  local candidate = initial_path or ""
-  if candidate ~= "" and not path_utils.directory_exists(candidate) then
-    return path_utils.dirname(candidate)
-  end
-  return candidate
-end
-
-local function choose_file(initial_path, prompt, extension_hint)
-  if not reaper.GetUserFileNameForRead then
-    return nil
-  end
-  local ok, selected = reaper.GetUserFileNameForRead(initial_path or "", prompt, extension_hint or "")
-  if ok then
-    return selected
-  end
-  return nil
-end
-
-local function choose_folder_or_file(initial_path, folder_prompt, file_prompt)
-  if reaper.JS_Dialog_BrowseForFolder then
-    local ok_call, ok, selected = pcall(reaper.JS_Dialog_BrowseForFolder, folder_prompt, folder_initial_path(initial_path) or "")
-    if ok_call and ok and selected and selected ~= "" then
-      return selected
-    end
-  end
-  return choose_file(initial_path, file_prompt, "")
-end
-
-local function render_advanced_diagnostics(validation)
-  ImGui.Spacing(ctx)
-  local opened = true
-  local used_tree = false
-  if ImGui.TreeNode then
-    opened = ImGui.TreeNode(ctx, "Advanced diagnostics")
-    used_tree = true
-  else
-    ImGui.TextDisabled(ctx, "Advanced diagnostics")
-  end
-  if not opened then
+local function start_model_download()
+  if not backend_ready_or_setup() then
     return
   end
+  local job, err = runtime_client.start_model_download(paths)
+  if not job then
+    state.setup.message = err
+    state.last_error = err
+    return
+  end
+  state.setup.download_job = job
+  state.setup.download_progress = nil
+  state.setup.download_result = nil
+  state.setup.message = "Downloading the model..."
+  state.last_error = nil
+end
 
-  ImGui.TextDisabled(ctx, "Runtime source (resolved)")
-  ImGui.TextWrapped(ctx, validation.runtime.source_root or paths.runtime_source_root)
-  ImGui.TextDisabled(ctx, "Expected app-scoped runtime path")
-  ImGui.TextWrapped(ctx, paths.runtime_source_expected_root or paths.runtime_source_root)
-  if paths.runtime_source_legacy_root then
-    ImGui.TextDisabled(ctx, "Legacy runtime path accepted for v0.3.4 compatibility")
-    ImGui.TextWrapped(ctx, paths.runtime_source_legacy_root)
+local function poll_model_download()
+  local job = state.setup.download_job
+  if not job then
+    return
   end
-  if validation.python and validation.python.executable_path then
-    ImGui.TextDisabled(ctx, "Resolved Python executable")
-    ImGui.TextWrapped(ctx, validation.python.executable_path)
+  local polled = runtime_client.poll_download(job)
+  state.setup.download_progress = polled.progress
+  if not polled.done then
+    return
   end
-  ImGui.TextDisabled(ctx, "Config file")
-  ImGui.TextWrapped(ctx, paths.config_path)
-  ImGui.TextDisabled(ctx, "Data directory")
-  ImGui.TextWrapped(ctx, paths.data_dir)
-  ImGui.TextWrapped(
-    ctx,
-    string.format(
-      "Expected model: %s (%d bytes, sha256 %s)",
-      configure_runtime.MODEL_FILENAME,
-      configure_runtime.MODEL_SIZE_BYTES,
-      configure_runtime.MODEL_SHA256
-    )
-  )
-  if used_tree and ImGui.TreePop then
-    ImGui.TreePop(ctx)
+  state.setup.download_job = nil
+  state.setup.download_result = polled.payload
+  if polled.payload and polled.payload.status == "ok" then
+    state.setup.message = "Model downloaded. Select one audio item and run analysis."
+    state.last_error = nil
+    refresh_model_status({ verify_checksum = true })
+  else
+    local message = "Model download failed."
+    if polled.payload and polled.payload.error and polled.payload.error.message then
+      message = polled.payload.error.message
+    end
+    state.setup.message = message
+    state.last_error = message
+    refresh_model_status({ verify_checksum = false })
   end
 end
 
-local function render_configure()
-  ensure_configure_ready()
+local function render_model_setup()
+  poll_model_download()
   telemetry_counter("tags_total", 0)
   telemetry_counter("visible_tags", 0)
   telemetry_label("focused_tag", state.focused_tag or "none")
-  render_image_label("details", "Configure REAPER Audio Tag.", badge_color("accent"), 16)
+  render_image_label("details", "Download the local audio tagging model.", badge_color("accent"), 16)
+  ImGui.Spacing(ctx)
+  ImGui.TextWrapped(ctx, "REAPER Audio Tag uses a local ONNX Cnn14 model. Download it once, then analysis runs locally on this machine.")
+  ImGui.Spacing(ctx)
+
   if state.last_error then
     ImGui.Spacing(ctx)
     ImGui.TextColored(ctx, badge_color("warning"), tostring(state.last_error))
   end
-  if state.configure.message then
+  if state.setup.message then
     ImGui.Spacing(ctx)
-    ImGui.TextWrapped(ctx, tostring(state.configure.message))
+    ImGui.TextWrapped(ctx, tostring(state.setup.message))
   end
+
   ImGui.Spacing(ctx)
-  local runtime_status = configure_runtime.runtime_status(paths)
-  local validation = state.configure.validation or {
-    runtime = runtime_status,
-    python = {
-      ok = false,
-      level = "warning",
-      message = "Choose your Python environment folder. A python or python3.11 file also works.",
-    },
-    model = { ok = false, level = "warning", message = "Choose the downloaded Cnn14_mAP=0.431.pth file." },
-  }
-  ImGui.TextColored(
-    ctx,
-    badge_color(validation.runtime.level or (validation.runtime.ok and "success" or "warning")),
-    validation.runtime.message
-  )
-  ImGui.Spacing(ctx)
-  local updated_python_path, python_changed = render_path_row(
-    "1. Python environment",
-    state.configure.python_path,
-    validation.python,
-    "Browse Folder/File",
-    function(current)
-      return choose_folder_or_file(python_browse_path() or current, "Choose the Python environment folder", "Choose python or python3.11")
-    end
-  )
-  state.configure.python_path = updated_python_path
-  ImGui.TextDisabled(ctx, "Recommended: choose the venv folder, for example .../reaper-panns-item-report/venv. Expert path: /opt/homebrew/bin/python3.11 if it has the required packages.")
-  ImGui.Spacing(ctx)
-  local updated_model_path, model_changed = render_path_row(
-    "2. PANNs model",
-    state.configure.model_path,
-    validation.model,
-    "Browse Model File",
-    function(current)
-      return choose_file(model_browse_path() or current, "Choose the Cnn14_mAP=0.431.pth model file", "pth")
-    end
-  )
-  state.configure.model_path = updated_model_path
-  ImGui.TextDisabled(ctx, "Choose the downloaded Cnn14_mAP=0.431.pth file, not the folder that contains it.")
-  if python_changed or model_changed then
-    state.configure.validation = nil
-    state.configure.message = nil
+  local model_status = state.setup.model_status or refresh_model_status({ verify_checksum = false })
+  local status_kind = model_status.ok and "success" or "warning"
+  ImGui.TextColored(ctx, badge_color(status_kind), model_status.message)
+  ImGui.TextDisabled(ctx, "Model: " .. runtime_client.MODEL_FILENAME .. " (" .. format_bytes(runtime_client.MODEL_SIZE_BYTES) .. ")")
+  ImGui.TextDisabled(ctx, "Saved to: " .. paths.model_path)
+
+  if state.setup.download_job then
+    local progress = state.setup.download_progress or {}
+    local downloaded = tonumber(progress.downloaded) or path_utils.file_size(paths.model_path .. ".download") or 0
+    local total = tonumber(progress.total) or runtime_client.MODEL_SIZE_BYTES
+    local fraction = total > 0 and math.min(0.99, downloaded / total) or 0
+    ImGui.Spacing(ctx)
+    ImGui.ProgressBar(ctx, fraction, -1, 0, string.format("Downloading... %s / %s", format_bytes(downloaded), format_bytes(total)))
+    ImGui.TextDisabled(ctx, "Keep REAPER open while the model downloads.")
+    return
   end
-  render_advanced_diagnostics(validation)
+
   ImGui.Spacing(ctx)
-  if ImGui.Button(ctx, "Check Setup") then
-    validate_configure()
+  if ImGui.Button(ctx, model_status.ok and "Verify / Redownload Model" or "Download Model") then
+    start_model_download()
   end
   ImGui.SameLine(ctx)
-  if ImGui.Button(ctx, "Save Configuration") then
-    if not save_configuration() then
-      state.configure.message = "Check setup first. Save is available after Python and model validation pass."
+  if model_status.ok and ImGui.Button(ctx, "Analyze Selected Item") then
+    start_analysis()
+    return
+  end
+
+  ImGui.Spacing(ctx)
+  if ImGui.TreeNode then
+    local opened = ImGui.TreeNode(ctx, "Advanced diagnostics")
+    if opened then
+      ImGui.TextDisabled(ctx, "Backend")
+      ImGui.TextWrapped(ctx, paths.backend_path)
+      ImGui.TextDisabled(ctx, "Labels")
+      ImGui.TextWrapped(ctx, paths.labels_path)
+      ImGui.TextDisabled(ctx, "Checksum")
+      ImGui.TextWrapped(ctx, runtime_client.MODEL_SHA256)
+      if ImGui.TreePop then
+        ImGui.TreePop(ctx)
+      end
     end
   end
 end
@@ -771,7 +658,7 @@ local function finalize_export_success(export_payload)
   if not job then
     clear_temp_audio()
     state.job = nil
-    open_configure(job_err)
+    open_model_setup(job_err)
     telemetry_event("runtime_start_failed")
     return
   end
@@ -817,7 +704,7 @@ local function render_exporting()
       predictions = {},
       highlights = {},
       warnings = {},
-      model_status = { name = "Cnn14", source = "configured python" },
+      model_status = { name = "Cnn14 ONNX", source = "downloaded model" },
       item = stepped.diagnostics or {},
       error = { code = "export_failed", message = stepped.error or "Preparing the selected audio failed." },
     })
@@ -1147,7 +1034,7 @@ local function render_result()
     end
     if vm.model_status.name or vm.model_status.source then
       ImGui.Spacing(ctx)
-      ImGui.TextWrapped(ctx, string.format("%s • %s", tostring(vm.model_status.name or "Cnn14"), tostring(vm.model_status.source or "configured python")))
+      ImGui.TextWrapped(ctx, string.format("%s • %s", tostring(vm.model_status.name or "Cnn14 ONNX"), tostring(vm.model_status.source or "downloaded model")))
     end
     ImGui.Spacing(ctx)
     ImGui.TextDisabled(ctx, "Clip tags only, not events.")
@@ -1177,9 +1064,8 @@ local function render_error()
     return
   end
   ImGui.SameLine(ctx)
-  if ImGui.Button(ctx, "Configure") then
-    local draft, message = configure_runtime.prefill_draft(paths)
-    open_configure(message, draft)
+  if ImGui.Button(ctx, "Model") then
+    open_model_setup()
   end
 end
 
@@ -1196,8 +1082,8 @@ local function loop()
     local ok, err = xpcall(function()
       measure_phase("render_content", function()
         measure_phase("render_header", render_header)
-        if state.screen == "configure" then
-          measure_phase("render_configure", render_configure)
+        if state.screen == "setup" then
+          measure_phase("render_model_setup", render_model_setup)
         elseif state.screen == "exporting" then
           measure_phase("render_exporting", render_exporting)
         elseif state.screen == "loading" then

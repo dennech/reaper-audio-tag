@@ -1,16 +1,16 @@
 # Test Layer
 
-This directory contains the repository test scaffold for `REAPER Audio Tag v1`.
+This directory contains the repository test scaffold for `REAPER Audio Tag`.
 
 ## Layout
 
-- `tests/python`: Python tests for fixtures, contracts, and the real `reaper_panns_runtime` source tree under `reaper/reaper-panns-item-report/runtime/src`.
-- `tests/lua`: pure Lua report presenter tests plus snapshot checks.
-- `tests/integration`: cross-language checks that connect the runtime CLI fake mode with the Lua report layer.
+- `tests/python`: backend unit tests for WAV loading, model download/verification, report ranking, and CLI contracts.
+- `tests/lua`: pure Lua UI/report/runtime-launch tests plus snapshot checks.
+- `tests/integration`: smoke checks that connect the backend CLI and Lua test layer.
 - `tests/scripts`: local runners and deterministic fixture generation.
-- `tests/lua/snapshots`: text snapshots used by the Lua formatter tests.
+- `tests/lua/snapshots`: text snapshots used by Lua formatter tests.
 
-## Local commands
+## Local Commands
 
 - `python3 tests/scripts/run_python_tests.py --scope python`
 - `python3 tests/scripts/run_python_tests.py --scope integration`
@@ -19,13 +19,19 @@ This directory contains the repository test scaffold for `REAPER Audio Tag v1`.
 
 The Python runner uses `pytest` when available and falls back to a tiny built-in discovery runner when it is not.
 
-## Manual REAPER smoke checklist
+## Manual REAPER Smoke Checklist
 
 Install-layout expectation for public ReaPack releases:
 
 - Lua files install under `~/Library/Application Support/REAPER/Scripts/REAPER Audio Tag/reaper/...`
-- shipped runtime source installs under `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/runtime/src/...`
+- backend assets install under `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/bin/...`
+- labels install under `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/metadata/...`
+- the first-run ONNX model downloads to `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/models/...`
 
+Manual cases:
+
+- Fresh install opens the model download screen, not Configure or Setup.
+- `Download Model` shows progress and verifies checksum.
 - Normal audio item with no trimming.
 - Cropped item cut from the left side of a longer source file.
 - Cropped item cut from the right side of a longer source file.
@@ -41,7 +47,7 @@ Acceptance for all manual cases:
 - Export should not fail only because `accessor_start/accessor_end` disagree with the selected range.
 - When export cannot read part of the range, analysis should still run with padded silence and mark the range as clamped.
 - Only a fully unreadable range should surface `export_failed`.
-- `reaper/REAPER Audio Tag - Debug Export.lua` should write a diagnostics log without starting the model runtime.
+- `reaper/REAPER Audio Tag - Debug Export.lua` should write a diagnostics log without starting the backend.
 - After a finished run, selecting a different item and clicking `Another` should start a new analysis without closing the window.
 - Completed runs should not leave a fresh export WAV behind in `Data/reaper-panns-item-report/tmp`.
 - Cleanup must touch only plugin-owned artifacts under `tmp`, `jobs`, and `logs`; original source media must remain untouched.

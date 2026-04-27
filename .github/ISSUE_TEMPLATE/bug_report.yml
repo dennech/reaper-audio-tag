@@ -21,7 +21,7 @@ body:
     id: environment
     attributes:
       label: Environment
-      description: REAPER version, macOS version, chip, Python version, and backend.
+      description: REAPER version, operating system, chip/GPU, and backend shown in the report.
     validations:
       required: true
   - type: textarea
@@ -29,4 +29,3 @@ body:
     attributes:
       label: Logs or screenshots
       description: Paste the runtime log path or screenshots if available.
-

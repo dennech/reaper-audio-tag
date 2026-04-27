@@ -1,0 +1,72 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  backend-assets:
+    name: backend asset (${{ matrix.asset_suffix }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-13
+            asset_suffix: macos-x86_64
+            executable: reaper-audio-tag-backend
+          - runner: macos-latest
+            asset_suffix: macos-arm64
+            executable: reaper-audio-tag-backend
+          - runner: windows-latest
+            asset_suffix: windows-x64
+            executable: reaper-audio-tag-backend.exe
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Build backend executable
+        run: |
+          pyinstaller --onefile --name reaper-audio-tag-backend --collect-all onnxruntime backend/pyinstaller_entrypoint.py
+
+      - name: Prepare asset
+        shell: bash
+        run: |
+          mkdir -p release-assets
+          cp "dist/${{ matrix.executable }}" "release-assets/reaper-audio-tag-backend-${{ matrix.asset_suffix }}${{ runner.os == 'Windows' && '.exe' || '' }}"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: reaper-audio-tag-backend-${{ matrix.asset_suffix }}
+          path: release-assets/*
+
+      - name: Upload GitHub Release asset
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
+
+  model-asset-note:
+    name: model asset reminder
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print model asset requirement
+        run: |
+          echo "Attach cnn14_waveform_clipwise_opset17.onnx to the v0.4.0 GitHub Release."
+          echo "Expected SHA-256: deb65c5a2d291b3ce4ebf2360af71072b789ba11a4214ef77406b89ab97333aa"

@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-This project includes or vendors the following third-party components:
+This project includes or packages the following third-party components:
 
 ## Noto Emoji image assets
 
@@ -21,14 +21,34 @@ This project includes or vendors the following third-party components:
 ## PANNs / audioset_tagging_cnn
 
 - Source: `qiuqiangkong/audioset_tagging_cnn`
-- Files vendored under `reaper/reaper-panns-item-report/runtime/src/reaper_panns_runtime/_vendor/panns`
+- The current public backend uses an exported ONNX Cnn14 model derived from this project.
 - License: MIT
 
 ## AudioSet class labels
 
 - Source: Google AudioSet class label index CSV
-- File vendored under `reaper/reaper-panns-item-report/runtime/src/reaper_panns_runtime/_vendor/metadata/class_labels_indices.csv`
+- File vendored under `reaper/data/class_labels_indices.csv`
 - Used for mapping class indices to human-readable labels
+
+## ONNX Runtime
+
+- Source: `microsoft/onnxruntime`
+- Packaged inside platform backend release binaries.
+- macOS uses the CoreML execution provider when available.
+- Windows uses the DirectML execution provider when available.
+- License: MIT
+
+## NumPy
+
+- Source: `numpy/numpy`
+- Packaged inside platform backend release binaries.
+- License: BSD-3-Clause
+
+## PyInstaller
+
+- Source: `pyinstaller/pyinstaller`
+- Used to build platform backend release binaries.
+- License: GPL-2.0-or-later with a bootloader exception
 
 ## json.lua
 

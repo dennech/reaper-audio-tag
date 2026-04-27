@@ -1,7 +1,7 @@
 REAPER Audio Tag — More
-ok • mps • 842 ms
+ok • coreml • 842 ms
 Stage: runtime
-Tried: mps -> cpu
+Tried: coreml -> cpu
 Clip tags only, not events.
 Predictions:
   - [Strong] Speech 0.78
@@ -20,4 +20,4 @@ Predictions:
     1/3 seg | peak 0.09
   - [Low] Unknown texture 0.04
     1/3 seg | peak 0.06
-Model: Cnn14 • configured python
+Model: Cnn14 ONNX • downloaded model

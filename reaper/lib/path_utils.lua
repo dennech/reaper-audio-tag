@@ -2,6 +2,10 @@ local M = {}
 
 local sep = package.config:sub(1, 1)
 
+local function is_windows()
+  return sep == "\\"
+end
+
 local function expand_user_path(path)
   local text = tostring(path or "")
   if text == "~" then
@@ -105,6 +109,10 @@ function M.is_subpath(path, root)
 end
 
 function M.directory_exists(path)
+  if is_windows() then
+    local quoted = M.cmd_quote(expand_user_path(path) .. "\\NUL")
+    return shell_read("if exist " .. quoted .. " (echo yes)") == "yes"
+  end
   local quoted = M.sh_quote(expand_user_path(path))
   return shell_read("[ -d " .. quoted .. " ] && printf yes") == "yes"
 end
@@ -151,6 +159,14 @@ function M.capture_command(command)
 end
 
 function M.is_executable(path)
+  if is_windows() then
+    local expanded = expand_user_path(path)
+    if not M.exists(expanded) then
+      return false
+    end
+    local lowered = expanded:lower()
+    return lowered:match("%.exe$") or lowered:match("%.cmd$") or lowered:match("%.bat$")
+  end
   local quoted = M.sh_quote(expand_user_path(path))
   return shell_read("[ -x " .. quoted .. " ] && printf yes") == "yes"
 end
@@ -172,6 +188,8 @@ end
 function M.ensure_dir(path)
   if reaper and reaper.RecursiveCreateDirectory then
     reaper.RecursiveCreateDirectory(path, 0)
+  elseif is_windows() then
+    os.execute("mkdir " .. M.cmd_quote(path) .. " >NUL 2>NUL")
   else
     os.execute("mkdir -p " .. M.sh_quote(path))
   end
@@ -241,6 +259,11 @@ function M.file_size(path)
     return nil
   end
 
+  if is_windows() then
+    local value = shell_read("for %I in (" .. M.cmd_quote(expand_user_path(path)) .. ") do @echo %~zI")
+    return tonumber(value)
+  end
+
   local quoted = M.sh_quote(expand_user_path(path))
   local value = shell_read("stat -f %z " .. quoted .. " 2>/dev/null")
   if not value or value == "" then
@@ -296,6 +319,18 @@ function M.mktemp_dir(prefix)
 end
 
 function M.sha256(path)
+  if is_windows() then
+    local output = shell_all("certutil -hashfile " .. M.cmd_quote(path) .. " SHA256 2>NUL")
+    if output and output ~= "" then
+      for line in tostring(output):gmatch("[^\r\n]+") do
+        local digest = line:match("^%s*([0-9a-fA-F]+)%s*$")
+        if digest and #digest == 64 then
+          return digest
+        end
+      end
+    end
+  end
+
   local line = shell_read("shasum -a 256 " .. M.sh_quote(path) .. " 2>/dev/null")
   if line and line ~= "" then
     return line:match("^([0-9a-fA-F]+)")
@@ -311,6 +346,11 @@ end
 function M.sh_quote(value)
   local text = tostring(value)
   return "'" .. text:gsub("'", "'\\''") .. "'"
+end
+
+function M.cmd_quote(value)
+  local text = tostring(value)
+  return '"' .. text:gsub('"', '\\"') .. '"'
 end
 
 function M.sanitize_job_id(raw)

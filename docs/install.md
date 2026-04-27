@@ -1,134 +1,44 @@
-# Installation
+# Install REAPER Audio Tag
 
-## Recommended macOS flow
+## Recommended Flow
 
-### 1. Install REAPER and ReaPack
-
-1. Install REAPER `7.x`.
-2. Open REAPER and check whether `Extensions -> ReaPack -> Browse Packages...` exists.
-3. If it is missing:
-   - download ReaPack from [reapack.com](https://reapack.com/)
-   - in REAPER, open `Options -> Show REAPER resource path in Finder`
-   - place the downloaded ReaPack file into the `UserPlugins` folder there
-   - restart REAPER
-
-### 2. Import this project's ReaPack repository
-
-1. In REAPER, open `Extensions -> ReaPack -> Import repositories...`.
-2. Add:
-
-   `https://raw.githubusercontent.com/dennech/reaper-audio-tag/main/index.xml`
-
-3. Open `Extensions -> ReaPack -> Browse Packages...`.
-4. Search for `REAPER Audio Tag`.
-5. Install the package.
-6. ReaPack will also install the shipped runtime source into `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/runtime/src/`.
-
-### 3. Install ReaImGui
-
-1. In ReaPack, search for `ReaImGui: ReaScript binding for Dear ImGui`.
-2. Install it.
-3. Restart REAPER.
-
-### 4. Install Python 3.11
-
-Install Python `3.11` separately.
-
-Recommended:
-
-- the official macOS installer from python.org
-
-Then confirm in Terminal:
-
-```bash
-python3.11 --version
-```
-
-### 5. Create a local venv and install Python dependencies
-
-Recommended target:
+1. Install ReaPack.
+2. Import this repository URL:
 
 ```text
-~/Library/Application Support/REAPER/Data/reaper-panns-item-report/venv
+https://github.com/dennech/reaper-audio-tag/raw/main/index.xml
 ```
 
-Manual transparent path:
+3. Install `REAPER Audio Tag` from ReaPack.
+4. Install `ReaImGui: ReaScript binding for Dear ImGui` from ReaPack.
+5. Restart REAPER if requested.
+6. Select one audio item and run `REAPER Audio Tag`.
+7. Click `Download Model`.
+8. After the model is ready, run `REAPER Audio Tag` to analyze the selected item.
 
-```bash
-mkdir -p "$HOME/Library/Application Support/REAPER/Data/reaper-panns-item-report"
-python3.11 -m venv "$HOME/Library/Application Support/REAPER/Data/reaper-panns-item-report/venv"
-source "$HOME/Library/Application Support/REAPER/Data/reaper-panns-item-report/venv/bin/activate"
-python -m pip install --upgrade pip
-python -m pip install \
-  "numpy>=1.26,<2.0" \
-  "soundfile>=0.12,<1.0" \
-  "torch==2.6.0" \
-  "torchaudio==2.6.0" \
-  "torchlibrosa==0.1.0"
+## What ReaPack Installs
+
+ReaPack installs:
+
+- the Lua action UI;
+- the debug export action;
+- class label metadata;
+- the platform backend executable for your REAPER platform.
+
+The ONNX model is not stored in git. The main action downloads it from the GitHub Release asset when you click `Download Model`.
+
+## Downloaded Model
+
+```text
+File: cnn14_waveform_clipwise_opset17.onnx
+Size: about 327 MB
+SHA-256: deb65c5a2d291b3ce4ebf2360af71072b789ba11a4214ef77406b89ab97333aa
 ```
 
-Optional helper for source checkouts or manual repository downloads:
+Stored under:
 
-```bash
-./scripts/create_local_venv_macos.sh
+```text
+REAPER/Data/reaper-panns-item-report/models/
 ```
 
-That helper is optional convenience only. It runs in Terminal, not in REAPER, and does not download the model.
-
-### 6. Download the model manually
-
-Required model:
-
-- file: `Cnn14_mAP=0.431.pth`
-- size: about `327 MB`
-- sha256: `0dc499e40e9761ef5ea061ffc77697697f277f6a960894903df3ada000e34b31`
-
-Recommended source:
-
-- [Zenodo checkpoint download](https://zenodo.org/records/3987831/files/Cnn14_mAP%3D0.431.pth)
-
-Verify the checksum:
-
-```bash
-shasum -a 256 /path/to/Cnn14_mAP=0.431.pth
-```
-
-### 7. Run Configure inside REAPER
-
-1. Open the Actions list.
-2. Run `REAPER Audio Tag: Configure`.
-3. Set:
-   - Python environment: the venv folder where dependencies are installed, usually `.../reaper-panns-item-report/venv`
-   - model file: the exact file `Cnn14_mAP=0.431.pth`
-4. Click `Check Setup`.
-5. Click `Save Configuration`.
-
-Examples:
-
-- preferred Python environment: `~/Library/Application Support/REAPER/Data/reaper-panns-item-report/venv`
-- expert Python executable path: `/opt/homebrew/bin/python3.11`
-- model path: `/path/to/Cnn14_mAP=0.431.pth`
-
-### 8. Run the report
-
-1. Select exactly one audio item.
-2. Run `REAPER Audio Tag`.
-
-If the configuration is missing or invalid, the main action opens `Configure`.
-
-## Notes
-
-- `FFmpeg` is not required for the current version.
-- REAPER does not install Python for you.
-- REAPER does not download the model for you.
-- This project currently uses its own ReaPack repository URL directly.
-
-## Developer setup
-
-Source checkout workflows can still use:
-
-1. `git clone`
-2. create a local venv manually or with `scripts/create_local_venv_macos.sh`
-3. manually load `reaper/REAPER Audio Tag.lua`
-
-That remains developer and recovery tooling only, not the main public install path.
+No Python, venv, FFmpeg, or manual `.pth` checkpoint setup is required.

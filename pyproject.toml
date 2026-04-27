@@ -4,42 +4,38 @@ build-backend = "hatchling.build"
 
 [project]
 name = "reaper-panns-item-report"
-version = "0.3.8"
-description = "REAPER item analysis report powered by PANNs Cnn14."
+version = "0.4.0"
+description = "REAPER audio tagging backend powered by PANNs Cnn14 ONNX."
 readme = "README.md"
-requires-python = ">=3.11,<3.12"
+requires-python = ">=3.11,<3.13"
 license = {text = "MIT"}
 authors = [
   {name = "dennech"},
 ]
 dependencies = [
-  "numpy>=1.26,<2.0",
-  "soundfile>=0.12,<1.0",
-  "torch==2.6.0",
-  "torchaudio==2.6.0",
-  "torchlibrosa==0.1.0",
+  "numpy>=1.26,<3.0",
+  "onnxruntime>=1.25,<1.26; platform_system != 'Windows'",
+  "onnxruntime-directml>=1.22,<1.23; platform_system == 'Windows'",
 ]
 
 [project.optional-dependencies]
 dev = [
   "pytest>=8.2,<9.0",
+  "pyinstaller>=6.11,<7.0",
 ]
 
 [project.scripts]
-reaper-panns-runtime = "reaper_panns_runtime.cli:main"
+reaper-audio-tag-backend = "reaper_audio_tag_backend.cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["reaper/reaper-panns-item-report/runtime/src/reaper_panns_runtime"]
+packages = ["backend/reaper_audio_tag_backend"]
 include = [
-  "reaper/reaper-panns-item-report/runtime/src/reaper_panns_runtime/_vendor/metadata/*.csv",
-  "reaper/reaper-panns-item-report/runtime/src/reaper_panns_runtime/_vendor/panns/LICENSE.MIT",
+  "reaper/data/class_labels_indices.csv",
 ]
 
 [tool.hatch.build.targets.sdist]
 include = [
-  "/reaper/reaper-panns-item-report/runtime/src/reaper_panns_runtime",
-  "/runtime/README.md",
-  "/runtime/docs",
+  "/backend",
   "/reaper",
   "/tests",
   "/scripts",
@@ -51,7 +47,7 @@ include = [
 
 [tool.pytest.ini_options]
 pythonpath = [
-  "reaper/reaper-panns-item-report/runtime/src",
+  "backend",
 ]
 testpaths = [
   "tests/python",

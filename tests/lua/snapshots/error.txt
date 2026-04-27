@@ -1,6 +1,6 @@
 REAPER Audio Tag
 Try again
 missing_model
-Model checkpoint was not found
-Tried: mps -> cpu
-Warnings: mps_requested_but_unavailable
+ONNX model was not found
+Tried: coreml -> cpu
+Warnings: coreml_requested_but_unavailable

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0
+
+- Replaced the separate Configure/Python setup flow with a simple ReaPack-first flow: install the package, run `REAPER Audio Tag`, click `Download Model`, then analyze audio.
+- Switched runtime execution to a self-contained ONNX backend installed as platform-specific release assets, with CoreML on macOS, DirectML on Windows, and CPU fallback.
+- Removed the public Configure and Setup actions from the ReaPack package surface; public actions are now only `REAPER Audio Tag` and `REAPER Audio Tag - Debug Export`.
+- Changed the model from the manual `.pth` checkpoint flow to the release asset `cnn14_waveform_clipwise_opset17.onnx`, verified by SHA-256 after download.
+- Rewrote public install and troubleshooting docs so Python, venvs, FFmpeg, and manual model selection are no longer part of the user install path.
+
 ## 0.3.8
 
 - Removed `Save and Run` from `REAPER Audio Tag: Configure` so Configure only checks and saves settings.

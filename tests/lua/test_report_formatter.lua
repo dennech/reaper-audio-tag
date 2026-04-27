@@ -7,8 +7,8 @@ local tests = {}
 local sample_report = {
   schema_version = "reaper-panns-item-report/v1",
   status = "ok",
-  backend = "mps",
-  attempted_backends = { "mps", "cpu" },
+  backend = "coreml",
+  attempted_backends = { "coreml", "cpu" },
   summary = "Top detected tags: Speech, Speech synthesizer, and Sigh.",
   timing_ms = {
     preprocess = 118,
@@ -36,8 +36,8 @@ local sample_report = {
   warnings = {},
   error = nil,
   model_status = {
-    name = "Cnn14",
-    source = "configured python",
+    name = "Cnn14 ONNX",
+    source = "downloaded model",
   },
 }
 
@@ -46,7 +46,7 @@ local error_report = {
   status = "error",
   stage = "runtime",
   backend = "cpu",
-  attempted_backends = { "mps", "cpu" },
+  attempted_backends = { "coreml", "cpu" },
   timing_ms = {
     preprocess = 0,
     inference = 0,
@@ -54,15 +54,15 @@ local error_report = {
   },
   predictions = {},
   highlights = {},
-  warnings = { "mps_requested_but_unavailable" },
+  warnings = { "coreml_requested_but_unavailable" },
   summary = "No analysis summary is available.",
   model_status = {
-    name = "Cnn14",
-    source = "configured python",
+    name = "Cnn14 ONNX",
+    source = "downloaded model",
   },
   error = {
     code = "missing_model",
-    message = "Model checkpoint was not found",
+    message = "ONNX model was not found",
   },
 }
 
@@ -82,8 +82,8 @@ local export_error_report = {
   warnings = {},
   summary = "No analysis summary is available.",
   model_status = {
-    name = "Cnn14",
-    source = "configured python",
+    name = "Cnn14 ONNX",
+    source = "downloaded model",
   },
   item = {
     item_position = 128.14783,
