@@ -80,7 +80,7 @@ function tests.test_current_index_has_no_configure_setup_or_python_runtime_when_
   luaunit.assertEquals(block:find("runtime/src", 1, true) ~= nil, false)
   luaunit.assertStrContains(block, "class_labels_indices.csv")
   luaunit.assertStrContains(block, "reaper-audio-tag-backend")
-  luaunit.assertStrContains(block, "Download Model")
+  luaunit.assertStrContains(block, "ONNX model download")
 end
 
 return tests
