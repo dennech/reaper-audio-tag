@@ -9,7 +9,7 @@ on:
       tag_name:
         description: "GitHub Release tag to upload assets to"
         required: true
-        default: "v0.4.5"
+        default: "v0.4.6"
 
 permissions:
   contents: write

@@ -10,7 +10,7 @@ local MAX_TIMEOUT_SEC = 600
 M.MODEL_FILENAME = "cnn14_waveform_clipwise_opset17.onnx"
 M.MODEL_SIZE_BYTES = 327331996
 M.MODEL_SHA256 = "deb65c5a2d291b3ce4ebf2360af71072b789ba11a4214ef77406b89ab97333aa"
-M.MODEL_URL = "https://github.com/dennech/reaper-audio-tag/releases/download/v0.4.5/cnn14_waveform_clipwise_opset17.onnx"
+M.MODEL_URL = "https://github.com/dennech/reaper-audio-tag/releases/download/v0.4.6/cnn14_waveform_clipwise_opset17.onnx"
 
 local function is_windows(paths)
   return tostring(paths.os_name or ""):match("^Win") ~= nil

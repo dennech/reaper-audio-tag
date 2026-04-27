@@ -403,7 +403,7 @@ function tests.test_main_script_tracks_window_open_state_explicitly()
   handle:close()
 
   luaunit.assertStrContains(source, "window_open = true")
-  luaunit.assertStrContains(source, 'local PLUGIN_VERSION = "0.4.5"')
+  luaunit.assertStrContains(source, 'local PLUGIN_VERSION = "0.4.6"')
   luaunit.assertStrContains(source, 'local APP_TITLE = "REAPER Audio Tag v" .. PLUGIN_VERSION')
   luaunit.assertStrContains(source, 'ImGui.Begin(ctx, APP_TITLE, state.window_open, ImGui.WindowFlags_NoCollapse())')
   luaunit.assertStrContains(source, "ImGui.TextColored(ctx, badge_color(\"accent\"), APP_TITLE)")

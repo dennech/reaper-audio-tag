@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.6
+
+- Fixed macOS ReaPack backend installation by publishing both Apple Silicon and Intel backend assets with the supported `darwin` platform filter.
+- The Lua action now chooses the matching macOS backend by local CPU architecture, while keeping fallback candidates for repaired or partially updated installs.
+- Added regression coverage so unsupported `darwin-arm64` ReaPack package metadata cannot return unnoticed.
+
 ## 0.4.5
 
 - Release automation now copies and verifies the ONNX model asset automatically, so a tag cannot ship without the first-run model download target.

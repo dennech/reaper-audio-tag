@@ -32,10 +32,26 @@ local function backend_candidates(data_dir, os_name)
     }
   end
   if tostring(os_name or ""):match("^OSX") then
+    local override_arch = rawget(_G, "REAPER_AUDIO_TAG_TEST_ARCH")
+    local arch = override_arch
+    if not arch or arch == "" then
+      arch = path_utils.capture_command("uname -m 2>/dev/null")
+    end
+    arch = tostring(arch or ""):lower()
+    local arm_backend = path_utils.join(data_dir, "bin", "macos-arm64", "reaper-audio-tag-backend")
+    local intel_backend = path_utils.join(data_dir, "bin", "macos-x86_64", "reaper-audio-tag-backend")
+    local generic_backend = path_utils.join(data_dir, "bin", "reaper-audio-tag-backend" .. suffix)
+    if arch:match("x86_64") or arch:match("amd64") then
+      return {
+        intel_backend,
+        arm_backend,
+        generic_backend,
+      }
+    end
     return {
-      path_utils.join(data_dir, "bin", "macos-arm64", "reaper-audio-tag-backend"),
-      path_utils.join(data_dir, "bin", "macos-x86_64", "reaper-audio-tag-backend"),
-      path_utils.join(data_dir, "bin", "reaper-audio-tag-backend" .. suffix),
+      arm_backend,
+      intel_backend,
+      generic_backend,
     }
   end
   return {
