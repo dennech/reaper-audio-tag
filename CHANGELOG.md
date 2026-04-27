@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.1
+
+- Rebuilt release assets from the exact release tag so GitHub source archives and uploaded backend binaries are reproducible again.
+- Fixed Intel macOS backend packaging by allowing the ONNX Runtime version currently available for macOS x86_64.
+- Hardened manual release workflow dispatch so it checks out the requested tag and refuses to upload assets built from a different commit.
+
 ## 0.4.0
 
 - Replaced the separate Configure/Python setup flow with a simple ReaPack-first flow: install the package, run `REAPER Audio Tag`, click `Download Model`, then analyze audio.

@@ -1,5 +1,5 @@
 -- @description REAPER Audio Tag
--- @version 0.4.0
+-- @version 0.4.1
 -- @author dennech
 -- @link https://github.com/dennech/reaper-audio-tag
 -- @screenshot https://raw.githubusercontent.com/dennech/reaper-audio-tag/main/docs/images/reaper-audio-tag-hero.png
@@ -11,9 +11,9 @@
 --
 --   No user-managed Python, venv, or manual model file selection is required.
 -- @changelog
---   - Replaced the old manual path setup flow with first-run ONNX model download.
---   - Switched analysis launch to a self-contained backend executable installed by ReaPack.
---   - Removed the separate configuration action and Python package contents.
+--   - Rebuilt release assets from the exact release tag for reproducible GitHub Releases.
+--   - Fixed Intel macOS backend packaging by allowing the available ONNX Runtime version.
+--   - Kept the simple first-run model download flow unchanged.
 -- @provides
 --   [nomain] REAPER Audio Tag - Debug Export.lua
 --   [nomain] PANNs Item Report.lua

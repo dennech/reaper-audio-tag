@@ -9,7 +9,7 @@ on:
       tag_name:
         description: "GitHub Release tag to upload assets to"
         required: true
-        default: "v0.4.0"
+        default: "v0.4.1"
 
 permissions:
   contents: write
@@ -34,6 +34,26 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag_name || github.ref }}
+          fetch-depth: 0
+
+      - name: Validate release checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_tag="${{ github.event.inputs.tag_name || github.ref_name }}"
+          if [[ "${release_tag}" != v* ]]; then
+            echo "Release tag must start with v: ${release_tag}" >&2
+            exit 1
+          fi
+          tag_sha="$(git rev-list -n 1 "${release_tag}")"
+          head_sha="$(git rev-parse HEAD)"
+          if [[ "${head_sha}" != "${tag_sha}" ]]; then
+            echo "Checked out ${head_sha}, but ${release_tag} points to ${tag_sha}." >&2
+            echo "Refusing to upload release assets built from a different commit." >&2
+            exit 1
+          fi
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -74,6 +94,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Print model asset requirement
+        env:
+          RELEASE_TAG: ${{ github.event.inputs.tag_name || github.ref_name }}
         run: |
-          echo "Attach cnn14_waveform_clipwise_opset17.onnx to the v0.4.0 GitHub Release."
+          echo "Attach cnn14_waveform_clipwise_opset17.onnx to the ${RELEASE_TAG} GitHub Release."
           echo "Expected SHA-256: deb65c5a2d291b3ce4ebf2360af71072b789ba11a4214ef77406b89ab97333aa"
