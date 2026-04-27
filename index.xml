@@ -339,6 +339,31 @@
         <source platform="darwin64" type="data" file="reaper-panns-item-report/bin/macos-x86_64/reaper-audio-tag-backend">https://github.com/dennech/reaper-audio-tag/releases/download/v0.4.1/reaper-audio-tag-backend-macos-x86_64</source>
         <source platform="win64" type="data" file="reaper-panns-item-report/bin/windows-x64/reaper-audio-tag-backend.exe">https://github.com/dennech/reaper-audio-tag/releases/download/v0.4.1/reaper-audio-tag-backend-windows-x64.exe</source>
       </version>
+      <version name="0.4.2" author="dennech" time="2026-04-27T07:09:28Z">
+        <changelog><![CDATA[- Simplified the first-run model download screen so users see one clear status and fewer technical paths.
+- Bundled trusted certificate roots for the backend downloader to fix macOS HTTPS certificate failures.
+- Added friendlier download failure messages while keeping technical details in Advanced diagnostics.]]></changelog>
+        <source main="main">https://github.com/dennech/reaper-audio-tag/raw/88e490f66c58f5efae18468361d1a9fb4af81818/reaper/REAPER%20Audio%20Tag.lua</source>
+        <source file="REAPER Audio Tag - Debug Export.lua">https://github.com/dennech/reaper-audio-tag/raw/88e490f66c58f5efae18468361d1a9fb4af81818/reaper/REAPER%20Audio%20Tag%20-%20Debug%20Export.lua</source>
+        <source file="PANNs Item Report.lua">https://github.com/dennech/reaper-audio-tag/raw/88e490f66c58f5efae18468361d1a9fb4af81818/reaper/PANNs%20Item%20Report.lua</source>
+        <source file="PANNs Item Report - Debug Export.lua">https://github.com/dennech/reaper-audio-tag/raw/88e490f66c58f5efae18468361d1a9fb4af81818/reaper/PANNs%20Item%20Report%20-%20Debug%20Export.lua</source>
+        <source file="lib/app_paths.lua">https://github.com/dennech/reaper-audio-tag/raw/88e490f66c58f5efae18468361d1a9fb4af81818/reaper/lib/app_paths.lua</source>
+        <source file="lib/audio_export.lua">https://github.com/dennech/reaper-audio-tag/raw/88e490f66c58f5efae18468361d1a9fb4af81818/reaper/lib/audio_export.lua</source>
+        <source file="lib/json.lua">https://github.com/dennech/reaper-audio-tag/raw/88e490f66c58f5efae18468361d1a9fb4af81818/reaper/lib/json.lua</source>
+        <source file="lib/path_utils.lua">https://github.com/dennech/reaper-audio-tag/raw/88e490f66c58f5efae18468361d1a9fb4af81818/reaper/lib/path_utils.lua</source>
+        <source file="lib/report_icon_assets.lua">https://github.com/dennech/reaper-audio-tag/raw/88e490f66c58f5efae18468361d1a9fb4af81818/reaper/lib/report_icon_assets.lua</source>
+        <source file="lib/report_icon_map.lua">https://github.com/dennech/reaper-audio-tag/raw/88e490f66c58f5efae18468361d1a9fb4af81818/reaper/lib/report_icon_map.lua</source>
+        <source file="lib/report_icons.lua">https://github.com/dennech/reaper-audio-tag/raw/88e490f66c58f5efae18468361d1a9fb4af81818/reaper/lib/report_icons.lua</source>
+        <source file="lib/report_presenter.lua">https://github.com/dennech/reaper-audio-tag/raw/88e490f66c58f5efae18468361d1a9fb4af81818/reaper/lib/report_presenter.lua</source>
+        <source file="lib/report_run_cleanup.lua">https://github.com/dennech/reaper-audio-tag/raw/88e490f66c58f5efae18468361d1a9fb4af81818/reaper/lib/report_run_cleanup.lua</source>
+        <source file="lib/report_telemetry.lua">https://github.com/dennech/reaper-audio-tag/raw/88e490f66c58f5efae18468361d1a9fb4af81818/reaper/lib/report_telemetry.lua</source>
+        <source file="lib/report_ui_state.lua">https://github.com/dennech/reaper-audio-tag/raw/88e490f66c58f5efae18468361d1a9fb4af81818/reaper/lib/report_ui_state.lua</source>
+        <source file="lib/runtime_client.lua">https://github.com/dennech/reaper-audio-tag/raw/88e490f66c58f5efae18468361d1a9fb4af81818/reaper/lib/runtime_client.lua</source>
+        <source type="data" file="reaper-panns-item-report/metadata/class_labels_indices.csv">https://github.com/dennech/reaper-audio-tag/raw/88e490f66c58f5efae18468361d1a9fb4af81818/reaper/data/class_labels_indices.csv</source>
+        <source platform="darwin-arm64" type="data" file="reaper-panns-item-report/bin/macos-arm64/reaper-audio-tag-backend">https://github.com/dennech/reaper-audio-tag/releases/download/v0.4.2/reaper-audio-tag-backend-macos-arm64</source>
+        <source platform="darwin64" type="data" file="reaper-panns-item-report/bin/macos-x86_64/reaper-audio-tag-backend">https://github.com/dennech/reaper-audio-tag/releases/download/v0.4.2/reaper-audio-tag-backend-macos-x86_64</source>
+        <source platform="win64" type="data" file="reaper-panns-item-report/bin/windows-x64/reaper-audio-tag-backend.exe">https://github.com/dennech/reaper-audio-tag/releases/download/v0.4.2/reaper-audio-tag-backend-windows-x64.exe</source>
+      </version>
     </reapack>
   </category>
   <metadata>
