@@ -13,7 +13,7 @@
 -- @changelog
 --   - Rebuilt release assets from the exact release tag for reproducible GitHub Releases.
 --   - Fixed Intel macOS backend packaging by allowing the available ONNX Runtime version.
---   - Kept the simple first-run model download flow unchanged.
+--   - Kept the simple first-run ONNX model download flow unchanged.
 -- @provides
 --   [nomain] REAPER Audio Tag - Debug Export.lua
 --   [nomain] PANNs Item Report.lua

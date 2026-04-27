@@ -4,7 +4,7 @@
 
 - Rebuilt release assets from the exact release tag so GitHub source archives and uploaded backend binaries are reproducible again.
 - Fixed Intel macOS backend packaging by allowing the ONNX Runtime version currently available for macOS x86_64.
-- Hardened manual release workflow dispatch so it checks out the requested tag and refuses to upload assets built from a different commit.
+- Hardened manual release workflow dispatch so it checks out the requested tag and refuses to upload assets built from a different commit while keeping the first-run ONNX model download flow unchanged.
 
 ## 0.4.0
 
