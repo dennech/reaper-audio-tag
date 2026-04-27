@@ -95,3 +95,47 @@ def test_download_model_command_maps_certificate_error(tmp_path: Path) -> None:
     assert payload["error"]["code"] == "certificate_failed"
     assert payload["error"]["message"] == "Could not verify GitHub's HTTPS certificate. Update REAPER Audio Tag and try again."
     assert "CERTIFICATE_VERIFY_FAILED" in payload["error"]["detail"]
+
+
+def test_download_model_command_keeps_raw_corruption_detail_out_of_user_message(tmp_path: Path) -> None:
+    def fake_download_verified(**_kwargs):
+        raise DownloadModelError(
+            "verification_failed",
+            "The download was incomplete or corrupted. Try downloading again.",
+            "Downloaded model failed verification: checksum_mismatch",
+        )
+
+    result = tmp_path / "result.json"
+    progress = tmp_path / "progress.json"
+    log = tmp_path / "download.log"
+    original_download_verified = cli_module.download_verified
+    cli_module.download_verified = fake_download_verified
+    try:
+        code = cli_module.main(
+            [
+                "download-model",
+                "--url",
+                "https://github.com/example/model.onnx",
+                "--output",
+                str(tmp_path / "model.onnx"),
+                "--sha256",
+                "0" * 64,
+                "--size",
+                "5",
+                "--progress-file",
+                str(progress),
+                "--result-file",
+                str(result),
+                "--log-file",
+                str(log),
+            ]
+        )
+    finally:
+        cli_module.download_verified = original_download_verified
+
+    payload = read_json(result)
+    assert code == 1
+    assert payload["error"]["code"] == "verification_failed"
+    assert payload["error"]["message"] == "The download was incomplete or corrupted. Try downloading again."
+    assert "checksum_mismatch" not in payload["error"]["message"]
+    assert "checksum_mismatch" in payload["error"]["detail"]

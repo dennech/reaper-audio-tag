@@ -3,10 +3,11 @@ from __future__ import annotations
 import hashlib
 import ssl
 from pathlib import Path
+from urllib.error import HTTPError, URLError
 
 from reaper_audio_tag_backend import model_store
 from reaper_audio_tag_backend.json_io import read_json
-from reaper_audio_tag_backend.model_store import DownloadModelError, download_verified, sha256_file, verify_file
+from reaper_audio_tag_backend.model_store import DownloadModelError, download_verified, friendly_download_error, sha256_file, verify_file
 
 
 def test_verify_file_reports_size_and_checksum(tmp_path: Path) -> None:
@@ -101,3 +102,49 @@ def test_download_verified_reports_corrupted_download_friendly(tmp_path: Path) -
     assert raised.code == "verification_failed"
     assert raised.user_message == "The download was incomplete or corrupted. Try downloading again."
     assert not output.with_suffix(".onnx.download").exists()
+
+
+def test_friendly_download_error_maps_network_timeout_and_http_failures() -> None:
+    timeout = friendly_download_error(TimeoutError("timed out"))
+    assert timeout.code == "network_failed"
+    assert timeout.user_message == "Download failed. Check your internet connection and try again."
+    assert "timed out" in timeout.detail
+
+    offline = friendly_download_error(URLError("offline"))
+    assert offline.code == "network_failed"
+    assert offline.user_message == "Download failed. Check your internet connection and try again."
+
+    http = friendly_download_error(HTTPError("https://github.com/example/model.onnx", 404, "Not Found", hdrs=None, fp=None))
+    assert http.code == "http_failed"
+    assert "HTTP 404" in http.user_message
+
+
+def test_download_verified_deletes_partial_file_on_urlopen_error(tmp_path: Path) -> None:
+    output = tmp_path / "models" / "model.onnx"
+    temp_path = output.with_suffix(".onnx.download")
+    temp_path.parent.mkdir(parents=True)
+    temp_path.write_bytes(b"stale partial model")
+
+    def fake_urlopen(_request, **_kwargs):
+        raise URLError("offline")
+
+    original_urlopen = model_store.urlopen
+    model_store.urlopen = fake_urlopen
+    raised = None
+    try:
+        download_verified(
+            url="https://github.com/example/model.onnx",
+            output=output,
+            sha256="0" * 64,
+            size=5,
+            progress_file=None,
+        )
+    except DownloadModelError as exc:
+        raised = exc
+    finally:
+        model_store.urlopen = original_urlopen
+
+    assert raised is not None
+    assert raised.code == "network_failed"
+    assert not temp_path.exists()
+    assert not output.exists()

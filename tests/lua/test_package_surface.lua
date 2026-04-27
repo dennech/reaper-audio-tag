@@ -69,8 +69,32 @@ function tests.test_app_paths_resolve_reapack_data_backend_and_model_locations()
   luaunit.assertEquals(paths.labels_path, "/Users/test/Library/Application Support/REAPER/Data/reaper-panns-item-report/metadata/class_labels_indices.csv")
   luaunit.assertEquals(paths.model_path, "/Users/test/Library/Application Support/REAPER/Data/reaper-panns-item-report/models/cnn14_waveform_clipwise_opset17.onnx")
   luaunit.assertEquals(paths.model_cache_dir, path_utils.join(os.getenv("HOME"), "Library", "Caches", "reaper-audio-tag", "coreml-cache"))
+  luaunit.assertEquals(paths.model_cache_dir:find("Application Support", 1, true), nil)
   luaunit.assertEquals(paths.backend_candidates[2], "/Users/test/Library/Application Support/REAPER/Data/reaper-panns-item-report/bin/macos-arm64/reaper-audio-tag-backend")
   luaunit.assertEquals(paths.backend_candidates[3], "/Users/test/Library/Application Support/REAPER/Data/reaper-panns-item-report/bin/macos-x86_64/reaper-audio-tag-backend")
+end
+
+function tests.test_app_paths_keep_windows_cache_with_app_data()
+  local original_reaper = _G.reaper
+  _G.reaper = {
+    get_action_context = function()
+      return nil, "C:/Users/Example/AppData/Roaming/REAPER/Scripts/REAPER Audio Tag/REAPER Audio Tag.lua"
+    end,
+    get_ini_file = function()
+      return "C:/Users/Example/AppData/Roaming/REAPER/reaper.ini"
+    end,
+    GetOS = function()
+      return "Win64"
+    end,
+  }
+
+  local paths = app_paths.build()
+  _G.reaper = original_reaper
+
+  luaunit.assertStrContains(paths.model_cache_dir, "Data")
+  luaunit.assertStrContains(paths.model_cache_dir, "reaper-panns-item-report")
+  luaunit.assertStrContains(paths.model_cache_dir, "coreml-cache")
+  luaunit.assertStrContains(paths.backend_path, "reaper-audio-tag-backend.exe")
 end
 
 function tests.test_current_index_has_no_configure_setup_or_python_runtime_when_generated()
@@ -87,6 +111,10 @@ function tests.test_current_index_has_no_configure_setup_or_python_runtime_when_
   luaunit.assertStrContains(block, "class_labels_indices.csv")
   luaunit.assertStrContains(block, "reaper-audio-tag-backend")
   luaunit.assertStrContains(block, "ONNX model download")
+  luaunit.assertStrContains(block, "releases/download/v0.4.3/reaper-audio-tag-backend-macos-arm64")
+  luaunit.assertStrContains(block, "releases/download/v0.4.3/reaper-audio-tag-backend-macos-x86_64")
+  luaunit.assertStrContains(block, "releases/download/v0.4.3/reaper-audio-tag-backend-windows-x64.exe")
+  luaunit.assertEquals(block:find("cnn14_waveform_clipwise_opset17.onnx", 1, true), nil)
 end
 
 return tests

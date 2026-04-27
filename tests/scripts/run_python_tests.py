@@ -15,6 +15,8 @@ TEST_MODULES = {
         "tests.python.test_backend_audio_report",
         "tests.python.test_backend_cli",
         "tests.python.test_backend_model_store",
+        "tests.python.test_backend_onnx_runner",
+        "tests.python.test_release_workflow",
     ],
     "integration": [
         "tests.integration.test_end_to_end",

@@ -53,7 +53,10 @@ def _session(model_path: Path, provider: object, cache_dir: Path | None):
         provider_options = dict(provider[1])
         provider_options["ModelCacheDirectory"] = str(cache_dir)
         provider = (provider[0], provider_options)
-    return ort.InferenceSession(str(model_path), sess_options=options, providers=[provider, "CPUExecutionProvider"])
+    providers = [provider]
+    if provider != "CPUExecutionProvider":
+        providers.append("CPUExecutionProvider")
+    return ort.InferenceSession(str(model_path), sess_options=options, providers=providers)
 
 
 def analyze(audio_path: str | Path, model_path: str | Path, labels_path: str | Path, *, requested_backend: str, cache_dir: str | Path | None) -> dict[str, object]:

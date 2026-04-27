@@ -123,6 +123,26 @@ function tests.test_model_status_reports_missing_and_bad_size()
   path_utils.remove_tree(root)
 end
 
+function tests.test_model_status_reports_bad_checksum_when_requested()
+  local root = mktemp_dir()
+  local paths = fake_paths(root)
+  local original_sha256 = path_utils.sha256
+
+  sparse_model(paths.model_path, runtime_client.MODEL_SIZE_BYTES)
+  path_utils.sha256 = function()
+    return string.rep("0", 64)
+  end
+
+  local status = runtime_client.model_status(paths, { verify_checksum = true })
+  path_utils.sha256 = original_sha256
+
+  luaunit.assertEquals(status.ok, false)
+  luaunit.assertEquals(status.state, "bad_checksum")
+  luaunit.assertStrContains(status.message, "checksum")
+
+  path_utils.remove_tree(root)
+end
+
 function tests.test_start_job_uses_self_contained_backend_and_model_paths()
   local original_reaper = _G.reaper
   local original_sha256 = path_utils.sha256
@@ -171,6 +191,7 @@ function tests.test_start_job_uses_self_contained_backend_and_model_paths()
   luaunit.assertStrContains(launch_source, path_utils.sh_quote(paths.backend_path))
   luaunit.assertStrContains(launch_source, "--model-file " .. path_utils.sh_quote(paths.model_path))
   luaunit.assertStrContains(launch_source, "--labels-file " .. path_utils.sh_quote(paths.labels_path))
+  luaunit.assertStrContains(launch_source, "--cache-dir " .. path_utils.sh_quote(paths.model_cache_dir))
   luaunit.assertEquals(launch_source:find("PYTHONPATH", 1, true), nil)
   luaunit.assertEquals(launch_source:find("venv", 1, true), nil)
 
@@ -179,6 +200,7 @@ function tests.test_start_job_uses_self_contained_backend_and_model_paths()
   luaunit.assertStrContains(log_text, "subcommand=analyze")
   luaunit.assertStrContains(log_text, "model=" .. paths.model_path)
   luaunit.assertStrContains(log_text, "labels=" .. paths.labels_path)
+  luaunit.assertStrContains(log_text, "cache=" .. paths.model_cache_dir)
 
   path_utils.remove_tree(root)
 end
@@ -239,6 +261,31 @@ function tests.test_start_model_download_launches_backend_helper()
   luaunit.assertEquals(polled.payload.status, "ok")
   local progress = polled.progress or {}
   luaunit.assertEquals(progress.status, "done")
+
+  path_utils.remove_tree(root)
+end
+
+function tests.test_poll_download_returns_malformed_json_error()
+  local root = mktemp_dir()
+  local result_file = path_utils.join(root, "download-result.json")
+  local progress_file = path_utils.join(root, "download-progress.json")
+  write_text(result_file, "{not-json")
+  write_json(progress_file, {
+    status = "downloading",
+    downloaded = 128,
+    total = 256,
+  })
+
+  local polled = runtime_client.poll_download({
+    result_file = result_file,
+    progress_file = progress_file,
+    started_at = 0,
+  })
+
+  luaunit.assertEquals(polled.done, true)
+  luaunit.assertEquals(polled.payload.status, "error")
+  luaunit.assertEquals(polled.payload.error.code, "malformed_json")
+  luaunit.assertEquals(polled.progress.downloaded, 128)
 
   path_utils.remove_tree(root)
 end
