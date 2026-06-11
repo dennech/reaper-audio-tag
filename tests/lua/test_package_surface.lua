@@ -251,7 +251,10 @@ function tests.test_current_index_has_no_configure_setup_or_python_runtime_when_
   luaunit.assertStrContains(block, "releases/download/v0.4.8/reaper-audio-tag-backend-macos-arm64")
   luaunit.assertStrContains(block, "releases/download/v0.4.8/reaper-audio-tag-backend-macos-x86_64")
   luaunit.assertStrContains(block, "releases/download/v0.4.8/reaper-audio-tag-backend-windows-x64.exe")
-  luaunit.assertStrContains(block, "sha256="")
+  luaunit.assertStrContains(block, [[sha256="f82f69b451d4f5c8fe269ceb6f926eef24923e8add875077f129329b3d8a0e63"]])
+  luaunit.assertStrContains(block, [[sha256="df57e9c57f479d834e894f9e888f0416ed5e4de827c2d74332d63fe355379028"]])
+  luaunit.assertStrContains(block, [[sha256="96a309a2c9d48d63e13a804d569ce4024fb9af9815696fe904494b6c5b034d7a"]])
+  luaunit.assertEquals(block:find("REPLACE_WITH", 1, true), nil)
   luaunit.assertEquals(block:find("cnn14_waveform_clipwise_opset17.onnx", 1, true), nil)
 end
 
