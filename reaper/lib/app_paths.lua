@@ -96,7 +96,7 @@ local function resolve_backend_path(data_dir, os_name)
 end
 
 local function backend_asset_id(path)
-  local text = tostring(path or "")
+  local text = tostring(path or ""):gsub("\\", "/")
   if text:find("windows%-x64/reaper%-audio%-tag%-backend%.exe", 1) then
     return "windows-x64"
   end

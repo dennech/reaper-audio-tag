@@ -86,23 +86,49 @@ local function wait_for_file(path)
   return false
 end
 
-local function fake_paths(root)
+local function fake_paths(root, options)
+  options = options or {}
+  local backend_asset_id = options.backend_asset_id or "macos-arm64"
+  local backend_filename = backend_asset_id == "windows-x64" and "reaper-audio-tag-backend.exe" or "reaper-audio-tag-backend"
   return {
     data_dir = path_utils.join(root, "Data", "reaper-panns-item-report"),
     jobs_dir = path_utils.join(root, "Data", "reaper-panns-item-report", "jobs"),
     models_dir = path_utils.join(root, "Data", "reaper-panns-item-report", "models"),
     logs_dir = path_utils.join(root, "Data", "reaper-panns-item-report", "logs"),
     tmp_dir = path_utils.join(root, "Data", "reaper-panns-item-report", "tmp"),
-    backend_path = path_utils.join(root, "Data", "reaper-panns-item-report", "bin", "reaper-audio-tag-backend"),
+    backend_path = path_utils.join(root, "Data", "reaper-panns-item-report", "bin", backend_asset_id, backend_filename),
+    backend_asset_id = backend_asset_id,
+    backend_checksums_path = path_utils.join(root, "Data", "reaper-panns-item-report", "metadata", "backend-checksums.json"),
     labels_path = path_utils.join(root, "Data", "reaper-panns-item-report", "metadata", "class_labels_indices.csv"),
     model_path = path_utils.join(root, "Data", "reaper-panns-item-report", "models", runtime_client.MODEL_FILENAME),
     model_cache_dir = path_utils.join(root, "Data", "reaper-panns-item-report", "coreml-cache"),
-    os_name = "OSX64",
+    os_name = options.os_name or "OSX64",
   }
+end
+
+local function write_backend_checksum_manifest(paths)
+  local checksum = assert(path_utils.sha256(paths.backend_path))
+  write_json(paths.backend_checksums_path, {
+    [paths.backend_asset_id] = checksum,
+  })
+  return checksum
+end
+
+local function stub_runtime_sha256(paths, model_sha)
+  local original_sha256 = path_utils.sha256
+  local backend_sha = assert(original_sha256(paths.backend_path))
+  path_utils.sha256 = function(path)
+    if tostring(path) == tostring(paths.backend_path) then
+      return backend_sha
+    end
+    return model_sha or runtime_client.MODEL_SHA256
+  end
+  return original_sha256
 end
 
 local function prepare_runtime_tree(paths)
   write_fake_backend(paths.backend_path)
+  write_backend_checksum_manifest(paths)
   write_text(paths.labels_path, "index,mid,display_name\n0,/m/09x0r,Speech\n")
   sparse_model(paths.model_path, runtime_client.MODEL_SIZE_BYTES)
 end
@@ -145,13 +171,10 @@ end
 
 function tests.test_start_job_uses_self_contained_backend_and_model_paths()
   local original_reaper = _G.reaper
-  local original_sha256 = path_utils.sha256
   local root = mktemp_dir()
   local paths = fake_paths(path_utils.join(root, "runtime launch with spaces"))
   prepare_runtime_tree(paths)
-  path_utils.sha256 = function()
-    return runtime_client.MODEL_SHA256
-  end
+  local original_sha256 = stub_runtime_sha256(paths)
 
   _G.reaper = {
     RecursiveCreateDirectory = function(path)
@@ -214,19 +237,50 @@ function tests.test_start_job_requires_backend_model_and_labels()
   luaunit.assertStrContains(err, "backend is missing")
 
   write_fake_backend(paths.backend_path)
+  write_backend_checksum_manifest(paths)
   job, err = runtime_client.start_job(paths, { temp_audio_path = "/tmp/item.wav" }, {})
   luaunit.assertEquals(job, nil)
   luaunit.assertStrContains(err, "model has not been downloaded")
 
   sparse_model(paths.model_path, runtime_client.MODEL_SIZE_BYTES)
-  local original_sha256 = path_utils.sha256
-  path_utils.sha256 = function()
-    return runtime_client.MODEL_SHA256
-  end
+  local original_sha256 = stub_runtime_sha256(paths)
   job, err = runtime_client.start_job(paths, { temp_audio_path = "/tmp/item.wav" }, {})
   path_utils.sha256 = original_sha256
   luaunit.assertEquals(job, nil)
   luaunit.assertStrContains(err, "Audio tag labels are missing")
+
+  path_utils.remove_tree(root)
+end
+
+function tests.test_backend_checksum_metadata_must_be_valid_sha256()
+  local root = mktemp_dir()
+  local paths = fake_paths(root)
+  write_fake_backend(paths.backend_path)
+  write_json(paths.backend_checksums_path, {
+    [paths.backend_asset_id] = "abc",
+  })
+
+  local job, err = runtime_client.start_model_download(paths)
+
+  luaunit.assertEquals(job, nil)
+  luaunit.assertStrContains(err, "checksum metadata")
+  luaunit.assertStrContains(err, "missing or invalid")
+
+  path_utils.remove_tree(root)
+end
+
+function tests.test_backend_checksum_mismatch_blocks_runtime_launch()
+  local root = mktemp_dir()
+  local paths = fake_paths(root)
+  write_fake_backend(paths.backend_path)
+  write_json(paths.backend_checksums_path, {
+    [paths.backend_asset_id] = string.rep("0", 64),
+  })
+
+  local job, err = runtime_client.start_model_download(paths)
+
+  luaunit.assertEquals(job, nil)
+  luaunit.assertStrContains(err, "backend checksum does not match")
 
   path_utils.remove_tree(root)
 end
@@ -236,6 +290,7 @@ function tests.test_start_model_download_launches_backend_helper()
   local root = mktemp_dir()
   local paths = fake_paths(root)
   write_fake_backend(paths.backend_path)
+  write_backend_checksum_manifest(paths)
 
   _G.reaper = {
     RecursiveCreateDirectory = function(path)
@@ -292,13 +347,10 @@ end
 
 function tests.test_start_job_scales_timeout_for_long_items()
   local original_reaper = _G.reaper
-  local original_sha256 = path_utils.sha256
   local root = mktemp_dir()
   local paths = fake_paths(root)
   prepare_runtime_tree(paths)
-  path_utils.sha256 = function()
-    return runtime_client.MODEL_SHA256
-  end
+  local original_sha256 = stub_runtime_sha256(paths)
 
   _G.reaper = {
     RecursiveCreateDirectory = function(path)

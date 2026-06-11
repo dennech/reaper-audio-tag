@@ -66,7 +66,7 @@ local function backend_checksum_ready(paths)
   end
 
   local expected = tostring(checksums[paths.backend_asset_id] or ""):lower()
-  if expected == "" or not expected:match("^[0-9a-f]+$") then
+  if #expected ~= 64 or not expected:match("^[0-9a-f]+$") then
     return false, "Backend checksum metadata for this platform is missing or invalid."
   end
 
