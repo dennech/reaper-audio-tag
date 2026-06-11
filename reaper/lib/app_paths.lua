@@ -95,6 +95,20 @@ local function resolve_backend_path(data_dir, os_name)
   return candidates[1], candidates
 end
 
+local function backend_asset_id(path)
+  local text = tostring(path or "")
+  if text:find("windows%-x64/reaper%-audio%-tag%-backend%.exe", 1) then
+    return "windows-x64"
+  end
+  if text:find("macos%-arm64/reaper%-audio%-tag%-backend", 1) then
+    return "macos-arm64"
+  end
+  if text:find("macos%-x86_64/reaper%-audio%-tag%-backend", 1) then
+    return "macos-x86_64"
+  end
+  return nil
+end
+
 local function model_cache_dir(data_dir, os_name)
   if is_macos_os(os_name) then
     local home = os.getenv("HOME")
@@ -124,6 +138,8 @@ function M.build()
     backend_dir = path_utils.join(data_dir, "bin"),
     backend_path = backend_path,
     backend_candidates = backend_candidates_list,
+    backend_asset_id = backend_asset_id(backend_path),
+    backend_checksums_path = path_utils.join(data_dir, "metadata", "backend-checksums.json"),
     labels_path = path_utils.join(data_dir, "metadata", "class_labels_indices.csv"),
     models_dir = path_utils.join(data_dir, "models"),
     model_path = path_utils.join(data_dir, "models", "cnn14_waveform_clipwise_opset17.onnx"),
