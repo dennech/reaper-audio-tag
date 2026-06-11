@@ -1,5 +1,5 @@
 -- @description REAPER Audio Tag
--- @version 0.4.8
+-- @version 0.4.9
 -- @author dennech
 -- @link https://github.com/dennech/reaper-audio-tag
 -- @screenshot https://raw.githubusercontent.com/dennech/reaper-audio-tag/main/docs/images/reaper-audio-tag-hero.png
@@ -13,8 +13,9 @@
 --
 --   No user-managed Python, venv, or manual model file selection is required.
 -- @changelog
---   - Add `Write Tags to Project`, which writes top tags to an item note block and creates or updates a matching project region.
---   - Preserve user item notes and avoid duplicate REAPER Audio Tag regions on repeated writes.
+--   - Verify packaged backend binaries against a shipped SHA-256 manifest before launch.
+--   - Publish concrete SHA-256 checksums for ReaPack backend downloads.
+--   - Harden release packaging so assets are built from the requested tag.
 -- @provides
 --   [nomain] REAPER Audio Tag - Debug Export.lua
 --   [nomain] PANNs Item Report.lua
@@ -22,9 +23,9 @@
 --   [nomain] lib/*.lua
 --   [data] data/class_labels_indices.csv > reaper-panns-item-report/metadata/class_labels_indices.csv
 --   [data] data/backend-checksums.json > reaper-panns-item-report/metadata/backend-checksums.json
---   [darwin data] reaper-panns-item-report/bin/macos-arm64/reaper-audio-tag-backend https://github.com/dennech/reaper-audio-tag/releases/download/v$version/reaper-audio-tag-backend-macos-arm64
---   [darwin data] reaper-panns-item-report/bin/macos-x86_64/reaper-audio-tag-backend https://github.com/dennech/reaper-audio-tag/releases/download/v$version/reaper-audio-tag-backend-macos-x86_64
---   [win64 data] reaper-panns-item-report/bin/windows-x64/reaper-audio-tag-backend.exe https://github.com/dennech/reaper-audio-tag/releases/download/v$version/reaper-audio-tag-backend-windows-x64.exe
+--   [darwin data] reaper-panns-item-report/bin/macos-arm64/reaper-audio-tag-backend https://github.com/dennech/reaper-audio-tag/releases/download/v0.4.8/reaper-audio-tag-backend-macos-arm64
+--   [darwin data] reaper-panns-item-report/bin/macos-x86_64/reaper-audio-tag-backend https://github.com/dennech/reaper-audio-tag/releases/download/v0.4.8/reaper-audio-tag-backend-macos-x86_64
+--   [win64 data] reaper-panns-item-report/bin/windows-x64/reaper-audio-tag-backend.exe https://github.com/dennech/reaper-audio-tag/releases/download/v0.4.8/reaper-audio-tag-backend-windows-x64.exe
 
 local _, script_path = reaper.get_action_context()
 local script_dir = script_path:match("^(.*[\\/])") or "."
@@ -68,7 +69,7 @@ path_utils.ensure_dir(paths.tmp_dir)
 path_utils.ensure_dir(paths.jobs_dir)
 report_run_cleanup.prune_stale(paths)
 
-local PLUGIN_VERSION = "0.4.8"
+local PLUGIN_VERSION = "0.4.9"
 local APP_TITLE = "REAPER Audio Tag v" .. PLUGIN_VERSION
 local start_mode = _G.REAPER_AUDIO_TAG_START_MODE or "report"
 local start_message = _G.REAPER_AUDIO_TAG_OPEN_MESSAGE

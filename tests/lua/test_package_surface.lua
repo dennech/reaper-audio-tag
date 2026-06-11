@@ -21,13 +21,13 @@ local function write_file(path, contents)
 end
 
 local function current_version_block(index_xml)
-  local block = index_xml:match('<version name="0%.4%.8".-</version>')
+  local block = index_xml:match('<version name="0%.4%.9".-</version>')
   return block or ""
 end
 
 function tests.test_public_reapack_actions_are_main_and_debug_only()
   local source = read_file("reaper/REAPER Audio Tag.lua")
-  luaunit.assertStrContains(source, "-- @version 0.4.8")
+  luaunit.assertStrContains(source, "-- @version 0.4.9")
   luaunit.assertStrContains(source, "[nomain] REAPER Audio Tag - Debug Export.lua")
   luaunit.assertEquals(source:find("REAPER Audio Tag %- Configure%.lua", 1, false) ~= nil, false)
   luaunit.assertEquals(source:find("REAPER Audio Tag %- Setup%.lua", 1, false) ~= nil, false)
@@ -251,8 +251,9 @@ function tests.test_current_index_has_no_configure_setup_or_python_runtime_when_
   luaunit.assertEquals(block:find("reaper_panns_runtime", 1, true) ~= nil, false)
   luaunit.assertEquals(block:find("runtime/src", 1, true) ~= nil, false)
   luaunit.assertStrContains(block, "class_labels_indices.csv")
+  luaunit.assertStrContains(block, "backend-checksums.json")
   luaunit.assertStrContains(block, "reaper-audio-tag-backend")
-  luaunit.assertStrContains(block, "Write Tags to Project")
+  luaunit.assertStrContains(block, "SHA-256")
   luaunit.assertStrContains(block, "platform=\"darwin\"")
   luaunit.assertEquals(block:find("darwin%-arm64", 1, false) ~= nil, false)
   luaunit.assertStrContains(block, "releases/download/v0.4.8/reaper-audio-tag-backend-macos-arm64")

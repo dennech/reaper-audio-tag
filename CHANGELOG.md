@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.9
+
+- Added runtime SHA-256 verification for the packaged backend executable before launch.
+- Shipped a backend checksum manifest through ReaPack and added concrete SHA-256 attributes for the backend downloads.
+- Hardened release workflow tag validation before uploading release assets.
+
 ## 0.4.8
 
 - Added `Write Tags to Project`, a one-click writeback action that saves the analyzed tags into the selected item notes and creates or updates a matching project region.
