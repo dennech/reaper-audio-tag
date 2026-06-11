@@ -51,6 +51,33 @@ local function positive_number(value)
   return nil
 end
 
+
+local function backend_checksum_ready(paths)
+  if not paths.backend_asset_id then
+    return false, "Unsupported backend install path. Run ReaPack synchronize/update again."
+  end
+  if not path_utils.exists(paths.backend_checksums_path) then
+    return false, "Backend checksum metadata is missing. Run ReaPack synchronize/update again."
+  end
+
+  local checksums, err = read_json(paths.backend_checksums_path)
+  if type(checksums) ~= "table" then
+    return false, "Backend checksum metadata is invalid: " .. tostring(err or "unknown error")
+  end
+
+  local expected = tostring(checksums[paths.backend_asset_id] or ""):lower()
+  if #expected ~= 64 or not expected:match("^[0-9a-f]+$") then
+    return false, "Backend checksum metadata for this platform is missing or invalid."
+  end
+
+  local actual = tostring(path_utils.sha256(paths.backend_path) or ""):lower()
+  if actual ~= expected then
+    return false, "The REAPER Audio Tag backend checksum does not match. Run ReaPack synchronize/update again."
+  end
+
+  return true
+end
+
 local function backend_executable_ready(paths)
   if not path_utils.exists(paths.backend_path) then
     return false, "The REAPER Audio Tag backend is missing. Run Extensions -> ReaPack -> Synchronize packages and update this package."
@@ -61,7 +88,8 @@ local function backend_executable_ready(paths)
   if not is_windows(paths) and not path_utils.is_executable(paths.backend_path) then
     return false, "The REAPER Audio Tag backend is installed but is not executable. Run ReaPack synchronize/update again."
   end
-  return true
+
+  return backend_checksum_ready(paths)
 end
 
 function M.model_status(paths, options)

@@ -21,6 +21,7 @@
 --   [nomain] PANNs Item Report - Debug Export.lua
 --   [nomain] lib/*.lua
 --   [data] data/class_labels_indices.csv > reaper-panns-item-report/metadata/class_labels_indices.csv
+--   [data] data/backend-checksums.json > reaper-panns-item-report/metadata/backend-checksums.json
 --   [darwin data] reaper-panns-item-report/bin/macos-arm64/reaper-audio-tag-backend https://github.com/dennech/reaper-audio-tag/releases/download/v$version/reaper-audio-tag-backend-macos-arm64
 --   [darwin data] reaper-panns-item-report/bin/macos-x86_64/reaper-audio-tag-backend https://github.com/dennech/reaper-audio-tag/releases/download/v$version/reaper-audio-tag-backend-macos-x86_64
 --   [win64 data] reaper-panns-item-report/bin/windows-x64/reaper-audio-tag-backend.exe https://github.com/dennech/reaper-audio-tag/releases/download/v$version/reaper-audio-tag-backend-windows-x64.exe
