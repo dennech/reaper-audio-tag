@@ -23,7 +23,10 @@ def test_release_workflow_builds_from_requested_tag_and_refuses_sha_mismatch() -
     assert "ref: ${{ github.event.inputs.tag_name || github.ref }}" in workflow
     assert "fetch-depth: 0" in workflow
     assert "Validate release checkout" in workflow
-    assert 'release_tag="${{ github.event.inputs.tag_name || github.ref_name }}"' in workflow
+    assert "RELEASE_TAG_INPUT: ${{ github.event.inputs.tag_name || github.ref_name }}" in workflow
+    assert 'release_tag="${RELEASE_TAG_INPUT}"' in workflow
+    assert 'release_tag="${{ github.event.inputs.tag_name || github.ref_name }}"' not in workflow
+    assert r'^v[0-9]+(\.[0-9]+){2}([-.][0-9A-Za-z.-]+)?$' in workflow
     assert 'tag_sha="$(git rev-list -n 1 "${release_tag}")"' in workflow
     assert 'head_sha="$(git rev-parse HEAD)"' in workflow
     assert "Refusing to upload release assets built from a different commit." in workflow
