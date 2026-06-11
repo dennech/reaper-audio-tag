@@ -506,9 +506,9 @@
         <source file="lib/runtime_client.lua">https://github.com/dennech/reaper-audio-tag/raw/268ec80ee5e061e41f1ab256eda4d2bf006cdda9/reaper/lib/runtime_client.lua</source>
         <source file="lib/tag_writeback.lua">https://github.com/dennech/reaper-audio-tag/raw/268ec80ee5e061e41f1ab256eda4d2bf006cdda9/reaper/lib/tag_writeback.lua</source>
         <source type="data" file="reaper-panns-item-report/metadata/class_labels_indices.csv">https://github.com/dennech/reaper-audio-tag/raw/268ec80ee5e061e41f1ab256eda4d2bf006cdda9/reaper/data/class_labels_indices.csv</source>
-        <source platform="darwin" type="data" file="reaper-panns-item-report/bin/macos-arm64/reaper-audio-tag-backend">https://github.com/dennech/reaper-audio-tag/releases/download/v0.4.8/reaper-audio-tag-backend-macos-arm64</source>
-        <source platform="darwin" type="data" file="reaper-panns-item-report/bin/macos-x86_64/reaper-audio-tag-backend">https://github.com/dennech/reaper-audio-tag/releases/download/v0.4.8/reaper-audio-tag-backend-macos-x86_64</source>
-        <source platform="win64" type="data" file="reaper-panns-item-report/bin/windows-x64/reaper-audio-tag-backend.exe">https://github.com/dennech/reaper-audio-tag/releases/download/v0.4.8/reaper-audio-tag-backend-windows-x64.exe</source>
+        <source platform="darwin" type="data" file="reaper-panns-item-report/bin/macos-arm64/reaper-audio-tag-backend" sha256="REPLACE_WITH_REAL_SHA256_MACOS_ARM64">https://github.com/dennech/reaper-audio-tag/releases/download/v0.4.8/reaper-audio-tag-backend-macos-arm64</source>
+        <source platform="darwin" type="data" file="reaper-panns-item-report/bin/macos-x86_64/reaper-audio-tag-backend" sha256="REPLACE_WITH_REAL_SHA256_MACOS_X86_64">https://github.com/dennech/reaper-audio-tag/releases/download/v0.4.8/reaper-audio-tag-backend-macos-x86_64</source>
+        <source platform="win64" type="data" file="reaper-panns-item-report/bin/windows-x64/reaper-audio-tag-backend.exe" sha256="REPLACE_WITH_REAL_SHA256_WINDOWS_X64">https://github.com/dennech/reaper-audio-tag/releases/download/v0.4.8/reaper-audio-tag-backend-windows-x64.exe</source>
       </version>
     </reapack>
   </category>
