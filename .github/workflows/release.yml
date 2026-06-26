@@ -9,7 +9,7 @@ on:
       tag_name:
         description: "GitHub Release tag to upload assets to"
         required: true
-        default: "v0.4.8"
+        default: "v0.4.9"
 
 permissions:
   contents: write
@@ -99,7 +99,7 @@ jobs:
       MODEL_FILENAME: cnn14_waveform_clipwise_opset17.onnx
       MODEL_SHA256: deb65c5a2d291b3ce4ebf2360af71072b789ba11a4214ef77406b89ab97333aa
       MODEL_SIZE_BYTES: "327331996"
-      MODEL_SOURCE_TAG: v0.4.4
+      MODEL_SOURCE_TAG: v0.4.9
     steps:
       - uses: actions/checkout@v4
         with:
