@@ -59,13 +59,13 @@ patch_backend_checksums() {
 path = "index.xml"
 text = File.read(path, encoding: "UTF-8")
 checksums = {
-  "reaper-audio-tag-backend-macos-arm64" => "f82f69b451d4f5c8fe269ceb6f926eef24923e8add875077f129329b3d8a0e63",
-  "reaper-audio-tag-backend-macos-x86_64" => "df57e9c57f479d834e894f9e888f0416ed5e4de827c2d74332d63fe355379028",
-  "reaper-audio-tag-backend-windows-x64.exe" => "96a309a2c9d48d63e13a804d569ce4024fb9af9815696fe904494b6c5b034d7a",
+  "reaper-audio-tag-backend-macos-arm64" => "6c5665352822cc0a2eb7eb1cbb794d2a9be782d5d9e9ed81673ece48aab8fd19",
+  "reaper-audio-tag-backend-macos-x86_64" => "7f6961ba7418b95fbe67c59abdf11336dfced425e45d323657d76d74845a9a53",
+  "reaper-audio-tag-backend-windows-x64.exe" => "2d3bea4d55c5fbcfbb671790a7836277a5571d11c41e07c4c5419d7bcffe05f9",
 }
 
 checksums.each do |asset, sha|
-  url = "https://github.com/dennech/reaper-audio-tag/releases/download/v0.4.8/#{asset}"
+  url = "https://github.com/dennech/reaper-audio-tag/releases/download/v0.4.9/#{asset}"
   pattern = /(<source\b(?=[^>]*\bfile="[^"]+")[^>]*?)(?:\s+sha256="[^"]*")?(>#{Regexp.escape(url)}<\/source>)/
   changed = text.gsub!(pattern) do
     "#{Regexp.last_match(1)} sha256=\"#{sha}\"#{Regexp.last_match(2)}"

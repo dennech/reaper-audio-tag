@@ -35,7 +35,7 @@ def test_release_workflow_builds_from_requested_tag_and_refuses_sha_mismatch() -
 
 def test_release_workflow_default_tag_points_to_latest_backend_asset_release() -> None:
     workflow = _read(".github/workflows/release.yml")
-    assert 'default: "v0.4.8"' in workflow
+    assert 'default: "v0.4.9"' in workflow
 
 
 def test_release_workflow_uploads_only_built_release_assets_to_selected_tag() -> None:
@@ -50,7 +50,7 @@ def test_release_workflow_uploads_verified_model_asset_to_selected_tag() -> None
     workflow = _read(".github/workflows/release.yml")
 
     assert "MODEL_FILENAME: cnn14_waveform_clipwise_opset17.onnx" in workflow
-    assert "MODEL_SOURCE_TAG: v0.4.4" in workflow
+    assert "MODEL_SOURCE_TAG: v0.4.9" in workflow
     assert 'gh release download "${MODEL_SOURCE_TAG}"' in workflow
     assert 'actual_size="$(wc -c < "release-assets/${MODEL_FILENAME}"' in workflow
     assert 'echo "${MODEL_SHA256}  release-assets/${MODEL_FILENAME}" | sha256sum -c -' in workflow
@@ -62,7 +62,7 @@ def test_project_versions_and_pinned_model_asset_url_are_intentional() -> None:
     version = _project_version()
 
     assert f'__version__ = "{version}"' in _read("backend/reaper_audio_tag_backend/__init__.py")
-    assert "v0.4.8/cnn14_waveform_clipwise_opset17.onnx" in _read("backend/reaper_audio_tag_backend/constants.py")
+    assert "v0.4.9/cnn14_waveform_clipwise_opset17.onnx" in _read("backend/reaper_audio_tag_backend/constants.py")
     assert f"-- @version {version}" in _read("reaper/REAPER Audio Tag.lua")
-    assert "releases/download/v0.4.8/cnn14_waveform_clipwise_opset17.onnx" in _read("reaper/lib/runtime_client.lua")
+    assert "releases/download/v0.4.9/cnn14_waveform_clipwise_opset17.onnx" in _read("reaper/lib/runtime_client.lua")
     assert f'<version name="{version}"' in _read("index.xml")
