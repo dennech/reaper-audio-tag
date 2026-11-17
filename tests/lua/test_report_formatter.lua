@@ -296,7 +296,7 @@ function tests.test_legacy_action_wrappers_execute_forwarding_path_in_mocked_rea
   local debug_chunk = assert(loadfile("reaper/PANNs Item Report - Debug Export.lua", "t", {
     reaper = {
       get_action_context = function()
-        return nil, "C:\\Users\\dennech\\Work\\PANNs Reaper Plugin\\reaper\\PANNs Item Report - Debug Export.lua"
+        return nil, "C:\\Users\\Example\\Work\\PANNs Reaper Plugin\\reaper\\PANNs Item Report - Debug Export.lua"
       end,
     },
     dofile = function(path)
@@ -307,7 +307,7 @@ function tests.test_legacy_action_wrappers_execute_forwarding_path_in_mocked_rea
   debug_chunk()
 
   luaunit.assertEquals(forwarded[1], "/tmp/Projects/My Repo/reaper/REAPER Audio Tag.lua")
-  luaunit.assertEquals(forwarded[2], "C:\\Users\\dennech\\Work\\PANNs Reaper Plugin\\reaper\\REAPER Audio Tag - Debug Export.lua")
+  luaunit.assertEquals(forwarded[2], "C:\\Users\\Example\\Work\\PANNs Reaper Plugin\\reaper\\REAPER Audio Tag - Debug Export.lua")
 end
 
 function tests.test_export_error_report_hides_runtime_backend_attempts()
